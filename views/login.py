@@ -200,24 +200,43 @@ def login_page():
                 email = st.text_input("Email Address", placeholder="name@example.com")
                 password = st.text_input("Create Password", type="password", placeholder="Strong Password (Min 8 chars, Aa1!)")
                 confirm = st.text_input("Confirm Password", type="password", placeholder="Confirm Password")
-                submit = st.form_submit_button("Sign Up", type="primary")
+                submitted = st.form_submit_button("Sign Up", type="primary")
+
+            # --- DISCLAIMER DIALOG ---
+            @st.dialog("⚠️ Religious Disclaimer & Agreement")
+            def show_disclaimer(email, password):
+                st.write("""
+                **Please read and accept the following before proceeding:**
                 
-            if submit:
+                Disclaimer: Users agree that this system is not intended to replace any Islamic
+                scholar or madrasa, nor is it designed to mock any religious entity. The system
+                does not issue any fatwa of its own; rather, it draws upon existing knowledge
+                from authentic Islamic books. Its sole purpose is to provide guidance and
+                facilitate easy access to religious matters related to the Quran.
+                """)
+                
+                st.warning("By clicking 'I Agree', you acknowledge the above statement.")
+                
+                if st.button("I Agree & Verify", type="primary"):
+                    success, res_msg = create_user_pending(email, password, "user")
+                    if success:
+                        st.session_state.temp_email = email
+                        st.session_state.otp_expiry = time.time() + 600 # 10 Minutes
+                        st.success(res_msg)
+                        time.sleep(1.5)
+                        switch_to("verify_signup")
+                        st.rerun()
+                    else:
+                        st.error(res_msg)
+
+            if submitted:
                 if not email or not password:
                     st.warning("Please fill in all fields.")
                 elif password != confirm:
                     st.error("Passwords do not match.")
                 else:
-                    success, res_msg = create_user_pending(email, password, "user")
-                    if success:
-                        st.session_state.temp_email = email
-                        st.session_state.otp_expiry = time.time() + 600 # 10 Minutes
-                        # Hidden OTP
-                        st.success(res_msg)
-                        time.sleep(1.5)
-                        switch_to("verify_signup")
-                    else:
-                        st.error(res_msg)
+                    # Show Dialog instead of direct execution
+                    show_disclaimer(email, password)
                         
             st.markdown("---")
             if st.button("Already have an account? Sign In"):
