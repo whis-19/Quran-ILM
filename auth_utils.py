@@ -239,10 +239,18 @@ except Exception:
     descope_client = None
     print("[AUTH] Descope SDK not found or config error")
 
-def send_magic_link(email, redirect_url="http://localhost:8501"):
+def send_magic_link(email, redirect_url=None):
     """Sends a magic link to the user via Descope."""
     if not descope_client:
         return False, "Descope not configured."
+    
+    # 1. Check Restricted Emails
+    if email in config.RESTRICTED_EMAILS:
+        return False, "Sorry, this email cannot login using Magic Link."
+
+    # 2. Use Configured Base URL if not provided
+    if not redirect_url:
+        redirect_url = config.BASE_URL
     
     try:
         descope_client.magiclink.sign_up_or_in(

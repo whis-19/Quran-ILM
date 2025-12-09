@@ -65,6 +65,22 @@ def get_env(key, default=None, secret_path=None):
     """
     # 1. Environment Variable
     value = os.getenv(key)
+import os
+import streamlit as st
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
+def get_env(key, default=None, secret_path=None):
+    """
+    Retrieves configuration value with the following priority:
+    1. System Environment Variable (os.environ)
+    2. Streamlit Secrets (st.secrets) - if secret_path is provided
+    3. Default value
+    """
+    # 1. Environment Variable
+    value = os.getenv(key)
     if value is not None:
         return value
 
@@ -113,6 +129,15 @@ GOOGLE_API_KEY = get_env("GOOGLE_API_KEY", default="")
 # AUTHENTICATION CONFIGURATION (Descope)
 # ==========================================
 DESCOPE_PROJECT_ID = get_env("DESCOPE_PROJECT_ID", default="P36cjGCiKbjNCvv0sGAqbcLu3DDV")
+
+# Base URL for Magic Link Redirection (Default to localhost, overwrite in deployment)
+BASE_URL = get_env("BASE_URL", "http://localhost:8501")
+
+# Restricted Emails (Cannot use Magic Link)
+RESTRICTED_EMAILS = [
+    "quranfyp@gmail.com", 
+    SMTP_EMAIL # Block the system email itself if set
+]
 
 # ==========================================
 # INGESTION CONFIGURATION
