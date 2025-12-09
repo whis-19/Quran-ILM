@@ -230,10 +230,82 @@ def reset_password_request(email):
 
 def reset_password_confirm(email, otp, new_password):
     """Resets password using OTP."""
-    if verify_2fa(email, otp): # Reuse 2FA check logic
-        users_collection.update_one(
-            {"email": email},
-            {"$set": {"password_hash": hash_password(new_password)}}
+# --- DESCOPE INTEGRATION ---
+try:
+    from descope import DescopeClient
+    from descope.common import DeliveryMethod
+    descope_client = DescopeClient(project_id=config.DESCOPE_PROJECT_ID)
+except Exception:
+    descope_client = None
+    print("[AUTH] Descope SDK not found or config error")
+
+def send_magic_link(email, redirect_url="http://localhost:8501"):
+    """Sends a magic link to the user via Descope."""
+    if not descope_client:
+        return False, "Descope not configured."
+    
+    try:
+        descope_client.magiclink.sign_up_or_in(
+            method=DeliveryMethod.EMAIL,
+            login_id=email,
+            uri=redirect_url
         )
-        return True, "Password Reset Successfully."
-    return False, "Invalid or Expired Code."
+        return True, "Magic Link sent! Check your email."
+    except Exception as e:
+        return False, f"Failed to send Magic Link: {e}"
+
+def verify_magic_link_token(token):
+    """Verifies the token from the magic link URL."""
+    if not descope_client:
+        return None, "Descope not configured."
+    
+    try:
+        jwt_response = descope_client.magiclink.verify(token=token)
+        # Extract user info
+        user_info = jwt_response.get("user")
+        return user_info, "Success"
+    except Exception as e:
+        return None, f"Token Verification Failed: {e}"
+
+def sync_descope_user(descope_user):
+    """
+    Syncs Descope user to local MongoDB. 
+    If NEW: Generates password, saves it, and emails it to user.
+    """
+    email = descope_user.get("email") or descope_user.get("loginIds", [])[0]
+    
+    existing = users_collection.find_one({"email": email})
+    if existing:
+        return True, existing["role"], "Welcome back!"
+    
+    # NEW USER -> Generate Backup Password
+    backup_password = ''.join(random.choices(string.ascii_letters + string.digits + "!@#$", k=8))
+    # Ensure regex compliance just in case (simple retry logic or just force it)
+    backup_password = "A1!" + backup_password # Cheating to ensure complexity
+    
+    user_data = {
+        "email": email,
+        "password_hash": hash_password(backup_password),
+        "role": "user",
+        "verified": True, # Verified by Magic Link
+        "otp": None,
+        "created_at": datetime.utcnow(),
+        "auth_provider": "descope"
+    }
+    users_collection.insert_one(user_data)
+    
+    # Email the backup password
+    send_email(
+        email, 
+        "Welcome to Quran-ILM - Credentials", 
+        f"""
+        Welcome! You successfully logged in via Magic Link.
+        
+        As a backup, we generated a standard password for you:
+        Password: {backup_password}
+        
+        You can use this to log in normally in the future.
+        """
+    )
+    
+    return True, "user", "Account Created! Check email for backup password."

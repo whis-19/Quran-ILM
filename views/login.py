@@ -7,7 +7,10 @@ from auth_utils import (
     trigger_2fa, 
     verify_2fa,
     reset_password_request,
-    reset_password_confirm
+    reset_password_confirm,
+    send_magic_link,       # New
+    verify_magic_link_token, # New
+    sync_descope_user      # New
 )
 
 # --- UI HELPERS ---
@@ -17,11 +20,41 @@ def switch_to(mode):
     st.rerun()
 
 def login_page():
-    # --- PAGE CONFIG ---
-    # Note: In st.navigation, set_page_config is usually in main. But we can keep it here or remove valid.
-    # st.set_page_config(page_title="Quran-ILM Portal", page_icon="☪️", layout="centered", initial_sidebar_state="collapsed")
+    # --- CHECK FOR MAGIC LINK TOKEN ---
+    query_params = st.query_params
+    if "t" in query_params:
+        token = query_params["t"]
+        # Convert QueryParamsProxy to str if needed, usually direct access works
+        
+        with st.spinner("Verifying Magic Link..."):
+            user_info, msg = verify_magic_link_token(token)
+            
+            if user_info:
+                # Sync with local DB (Create if new + Email password)
+                success, role, welcome_msg = sync_descope_user(user_info)
+                
+                if success:
+                    st.session_state.authenticated = True
+                    st.session_state.role = role
+                    st.session_state.user_email = user_info.get("email") or user_info.get("loginIds", [])[0]
+                    
+                    # Clear query params
+                    st.query_params.clear()
+                    
+                    st.success(welcome_msg)
+                    time.sleep(2)
+                    st.rerun()
+                else:
+                    st.error(welcome_msg)
+            else:
+                st.error(msg)
+        
+        # Stop execution to show result
+        st.stop()
 
-    # --- CUSTOM CSS ---
+    # --- PAGE CONFIG ---
+    # ... (Rest of CSS)
+    
     st.markdown("""
     <style>
         /* Global Styles */
@@ -93,6 +126,7 @@ def login_page():
 
     # --- TIMER COMPONENT ---
     def display_countdown():
+        # ... (Same Timer)
         """
         Injects a Javascript Countdown Timer based on st.session_state.otp_expiry.
         """
@@ -162,6 +196,7 @@ def login_page():
                 submit = st.form_submit_button("Sign In", type="primary")
             
             if submit:
+                # ... (Existing Logic)
                 if not email or not password:
                     st.warning("Please fill in all fields.")
                 else:
@@ -181,6 +216,22 @@ def login_page():
                             st.rerun()
                     else:
                         st.error(msg)
+            
+            # --- MAGIC LINK LOGIN ---
+            st.markdown("---")
+            with st.expander("✨ Login with Magic Link"):
+                 magic_email = st.text_input("Enter Email for Magic Link")
+                 if st.button("Send Magic Link"):
+                     if not magic_email:
+                         st.warning("Please enter email.")
+                     else:
+                         success, msg = send_magic_link(magic_email)
+                         if success:
+                             st.success(msg)
+                         else:
+                             st.error(msg)
+            
+            # Forgot Password Link (Tertiary Button)
             
             # Forgot Password Link (Tertiary Button)
             col_link, col_create = st.columns([1, 1])
