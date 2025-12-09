@@ -1,0 +1,17 @@
+streamlit
+pymongo
+python-dotenv
+google-generativeai
+PyPDF2
+pandas
+altair
+tqdm
+langchain
+langchain-google-genai
+chromadb
+langchain-community
+langchain-classic
+langchain-text-splitters
+pydantic
+langchain-chroma
+pypdf

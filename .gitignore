@@ -1,0 +1,32 @@
+# General
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.DS_Store
+Thumbs.db
+
+# Environment Variables & Secrets
+.env
+.streamlit/secrets.toml
+
+# Virtual Environments
+venv/
+.venv/
+env/
+.env/
+
+# IDEs
+.vscode/
+.idea/
+
+# Streamlit
+# Keep .streamlit/config.toml if it contains theme settings, but ignore secrets
+# .streamlit/config.toml 
+
+# Project Specific
+# Ignore generated datasets or RAG indices if stored locally (GridFS handles this, but just in case)
+dataset/ 
+
+# Logs
+*.log
