@@ -11,74 +11,7 @@ if "role" not in st.session_state:
 
 # --- NAVIGATION LOGIC ---
 # --- BUTTON STYLES ---
-# --- THEME STATE ---
-if "theme" not in st.session_state:
-    st.session_state.theme = "light"
-
-def get_theme_css(theme):
-    if theme == "dark":
-        # Dark Mode Overrides
-        return """
-        <style>
-            :root {
-                --primary-color: #8B5CF6;
-                --background-color: #0E1117;
-                --secondary-background-color: #262730;
-                --text-color: #FAFAFA;
-            }
-            .stApp {
-                background-color: var(--background-color);
-                color: var(--text-color);
-            }
-            section[data-testid="stSidebar"] {
-                background-color: var(--secondary-background-color);
-            }
-            .stMarkdown, .stText, h1, h2, h3, h4, h5, h6, p, li, span {
-                color: var(--text-color) !important;
-            }
-            .stTextInput > label, .stSelectbox > label {
-                color: var(--text-color) !important;
-            }
-            /* Input Fields Background */
-            .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] {
-                color: var(--text-color);
-                background-color: #1E1E1E; 
-            }
-        </style>
-        """
-    else:
-        # Light Mode (Default Streamlit or forced Light)
-        return """
-        <style>
-            :root {
-                --primary-color: #8B5CF6;
-                --background-color: #FFFFFF;
-                --secondary-background-color: #F0F2F6;
-                --text-color: #31333F;
-            }
-            .stApp {
-                background-color: var(--background-color);
-                color: var(--text-color);
-            }
-            section[data-testid="stSidebar"] {
-                background-color: var(--secondary-background-color);
-            }
-            .stMarkdown, .stText, h1, h2, h3, h4, h5, h6, p, li, span {
-                color: var(--text-color) !important;
-            }
-            /* Explicitly set Input Background to White/Light */
-            .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] {
-                color: var(--text-color);
-                background-color: #FFFFFF; 
-            }
-        </style>
-        """
-
-# --- INJECT CSS ---
-# 1. Inject Theme Overrides
-st.markdown(get_theme_css(st.session_state.theme), unsafe_allow_html=True)
-
-# 2. Base Button Styles (Violet) - Inject AFTER to override Theme
+# --- BUTTON STYLES ---
 st.markdown("""
 <style>
     /* Global Button Style (Violet Theme) */
@@ -92,7 +25,7 @@ st.markdown("""
         transition: all 0.3s ease-in-out !important;
         width: 100%;
     }
-    /* Explicitly target the p tag inside buttons with high specificity */
+    /* Ensure text inside buttons is white */
     div.stButton > button p, div.stFormSubmitButton > button p, div.stDownloadButton > button p {
         color: white !important;
     }
@@ -136,15 +69,6 @@ else:
     # Logout Logic in Sidebar
     with st.sidebar:
         st.write(f"Logged in as **{st.session_state.role.upper()}**")
-        
-        # Theme Toggle
-        is_dark = st.session_state.theme == "dark"
-        toggle = st.toggle("🌙 Dark Mode", value=is_dark)
-        if toggle != is_dark:
-            st.session_state.theme = "dark" if toggle else "light"
-            st.rerun()
-            
-        st.divider()
         
         if st.button("🚪 Log Out"):
             st.session_state.authenticated = False
