@@ -190,46 +190,55 @@ def login_page():
         if st.session_state.auth_mode == "login":
             st.markdown("<p>Sign in to your account</p>", unsafe_allow_html=True)
             
-            with st.form("login_form"):
-                email = st.text_input("Email Address", placeholder="name@example.com")
-                password = st.text_input("Password", type="password", placeholder="••••••••")
-                submit = st.form_submit_button("Sign In", type="primary")
-            
-            if submit:
-                # ... (Existing Logic)
-                if not email or not password:
-                    st.warning("Please fill in all fields.")
-                else:
-                    success, role, msg = authenticate_user(email, password)
-                    if success:
-                        if role == "admin":
-                            # Trigger 2FA
-                            trigger_2fa(email) # No code returned
-                            st.session_state.temp_email = email
-                            st.session_state.temp_role = role
-                            st.session_state.otp_expiry = time.time() + 300 # 5 Minutes for 2FA
-                            switch_to("2fa")
-                        else:
-                            st.session_state.authenticated = True
-                            st.session_state.role = role
-                            st.session_state.user_email = email
-                            st.rerun()
+            # --- LOGIN METHOD TOGGLE ---
+            login_method = st.radio(
+                "Choose Login Method", 
+                ["Password", "Magic Link ✨"], 
+                horizontal=True,
+                label_visibility="collapsed"
+            )
+            st.write("") # Spacer
+
+            if login_method == "Password":
+                with st.form("login_form"):
+                    email = st.text_input("Email Address", placeholder="name@example.com")
+                    password = st.text_input("Password", type="password", placeholder="••••••••")
+                    submit = st.form_submit_button("Sign In", type="primary")
+                
+                if submit:
+                    if not email or not password:
+                        st.warning("Please fill in all fields.")
                     else:
-                        st.error(msg)
-            
-            # --- MAGIC LINK LOGIN ---
-            st.markdown("---")
-            with st.expander("✨ Login with Magic Link"):
-                 magic_email = st.text_input("Enter Email for Magic Link")
-                 if st.button("Send Magic Link"):
-                     if not magic_email:
-                         st.warning("Please enter email.")
-                     else:
-                         success, msg = send_magic_link(magic_email)
-                         if success:
-                             st.success(msg)
+                        success, role, msg = authenticate_user(email, password)
+                        if success:
+                            if role == "admin":
+                                # Trigger 2FA
+                                trigger_2fa(email) # No code returned
+                                st.session_state.temp_email = email
+                                st.session_state.temp_role = role
+                                st.session_state.otp_expiry = time.time() + 300 # 5 Minutes for 2FA
+                                switch_to("2fa")
+                            else:
+                                st.session_state.authenticated = True
+                                st.session_state.role = role
+                                st.session_state.user_email = email
+                                st.rerun()
+                        else:
+                            st.error(msg)
+
+            elif login_method == "Magic Link ✨":
+                with st.container(border=True): # Cleaner look than expander for main view
+                     st.write("Enter your email to receive a magic login link.")
+                     magic_email = st.text_input("Email Address for Magic Link")
+                     if st.button("Send Magic Link", type="primary"):
+                         if not magic_email:
+                             st.warning("Please enter email.")
                          else:
-                             st.error(msg)
+                             success, msg = send_magic_link(magic_email)
+                             if success:
+                                 st.success(msg)
+                             else:
+                                 st.error(msg)
             
             # Forgot Password Link (Tertiary Button)
             
