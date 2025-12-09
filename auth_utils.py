@@ -20,7 +20,42 @@ import config
 client, db, fs = init_connection()
 users_collection = db["users"]
 
-# ...
+# --- Security Helpers ---
+
+def hash_password(password):
+    """Hashes password using SHA256 with a fixed salt (simple implementation)."""
+    # In production, use bcrypt/argon2 and per-user salt.
+    salt = "quran_ilm_secure_salt_v1"
+    return hashlib.sha256((password + salt).encode()).hexdigest()
+
+def verify_password(plain_password, hashed_password):
+    return hash_password(plain_password) == hashed_password
+
+def validate_password_strength(password):
+    """
+    Enforces password complexity:
+    - Min 8 chars
+    - At least 1 Uppercase
+    - At least 1 Lowercase
+    - At least 1 Number
+    - At least 1 Special Char
+    """
+    if len(password) < 8:
+        return False, "Password must be at least 8 characters long."
+    if not re.search(r"[A-Z]", password):
+        return False, "Password must contain at least one uppercase letter."
+    if not re.search(r"[a-z]", password):
+        return False, "Password must contain at least one lowercase letter."
+    if not re.search(r"\d", password):
+        return False, "Password must contain at least one number."
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+        return False, "Password must contain at least one special character."
+    
+    return True, "Valid"
+
+def generate_otp():
+    """Generates a 6-digit OTP."""
+    return ''.join(random.choices(string.digits, k=6))
 
 def send_email(to_email, subject, body):
     """Sends email via SMTP if configured, else mocks it."""
