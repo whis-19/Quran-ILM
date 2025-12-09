@@ -66,11 +66,19 @@ def get_theme_css(theme):
             .stMarkdown, .stText, h1, h2, h3, h4, h5, h6, p, li, span {
                 color: var(--text-color) !important;
             }
+            /* Explicitly set Input Background to White/Light */
+            .stTextInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] {
+                color: var(--text-color);
+                background-color: #FFFFFF; 
+            }
         </style>
         """
 
 # --- INJECT CSS ---
-# 1. Base Button Styles (Violet) - Keeping these consistent
+# 1. Inject Theme Overrides
+st.markdown(get_theme_css(st.session_state.theme), unsafe_allow_html=True)
+
+# 2. Base Button Styles (Violet) - Inject AFTER to override Theme
 st.markdown("""
 <style>
     /* Global Button Style (Violet Theme) */
@@ -84,8 +92,11 @@ st.markdown("""
         transition: all 0.3s ease-in-out !important;
         width: 100%;
     }
-    div.stButton > button p { color: white !important; }
-    div.stButton > button:hover {
+    /* Explicitly target the p tag inside buttons with high specificity */
+    div.stButton > button p, div.stFormSubmitButton > button p, div.stDownloadButton > button p {
+        color: white !important;
+    }
+    div.stButton > button:hover, div.stFormSubmitButton > button:hover, div.stDownloadButton > button:hover {
         background-color: #7C3AED !important;
         transform: translateY(-2px);
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
@@ -112,9 +123,6 @@ st.markdown("""
     #MainMenu {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
-
-# 2. Inject Theme Overrides
-st.markdown(get_theme_css(st.session_state.theme), unsafe_allow_html=True)
 
 # --- NAVIGATION LOGIC ---
 if not st.session_state.authenticated:
