@@ -135,7 +135,7 @@ BASE_URL = get_env("BASE_URL", "http://localhost:8501")
 
 # Restricted Emails (Cannot use Magic Link)
 RESTRICTED_EMAILS = [
-    "quranfyp@gmail.com", 
+    "fypquranllm@gmail.com", 
     SMTP_EMAIL # Block the system email itself if set
 ]
 
