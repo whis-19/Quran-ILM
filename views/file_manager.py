@@ -1,4 +1,5 @@
 import streamlit as st
+import time
 import pandas as pd
 from datetime import datetime
 from admin_utils import init_connection, normalize_path, delete_files
@@ -277,6 +278,8 @@ else:
                             with st.expander("Output Logs"):
                                 st.code("".join(full_logs))
                             st.cache_data.clear()
+                            time.sleep(2)
+                            st.rerun()
                         else:
                             st.error("❌ Indexing job failed.")
                             with st.expander("Error Logs"):
