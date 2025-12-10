@@ -134,7 +134,7 @@ with st.expander("ℹ️ How to use this Assistant"):
     
     **Guidelines & Restrictions:**
     - **Scope**: Ask questions strictly related to Quranic verses, Tafsir, and Islamic history.
-    - **Language**: Best supported in English. Arabic and Urdu are experimental.
+    - **Language**: Currently only supported in English. 
     - **Accuracy**: The AI attempts to provide answers from the provided context. Always verify with the provided references.
     
     **Sample Questions:**

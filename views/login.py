@@ -193,7 +193,7 @@ def login_page():
             # --- LOGIN METHOD TOGGLE ---
             login_method = st.radio(
                 "Choose Login Method", 
-                ["Password", "Magic Link ✨"], 
+                ["Password", "Magic Link"], 
                 horizontal=True,
                 label_visibility="collapsed"
             )
@@ -226,7 +226,7 @@ def login_page():
                         else:
                             st.error(msg)
 
-            elif login_method == "Magic Link ✨":
+            elif login_method == "Magic Link":
                 with st.container(border=True): # Cleaner look than expander for main view
                      st.write("Enter your email to receive a magic login link.")
                      magic_email = st.text_input("Email Address for Magic Link")
@@ -259,7 +259,7 @@ def login_page():
             # --- SIGNUP METHOD TOGGLE ---
             signup_method = st.radio(
                 "Choose Signup Method", 
-                ["Password", "Magic Link ✨"], 
+                ["Password", "Magic Link"], 
                 horizontal=True,
                 label_visibility="collapsed"
             )
@@ -316,7 +316,7 @@ def login_page():
                     else:
                         show_disclaimer(email, password=password, method="password")
 
-            elif signup_method == "Magic Link ✨":
+            elif signup_method == "Magic Link":
                 with st.container(border=True):
                     st.write("Register with your email to receive a magic signup link.")
                     signup_email = st.text_input("Email Address")
