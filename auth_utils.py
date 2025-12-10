@@ -256,6 +256,28 @@ def reset_password_request(email):
 
 def reset_password_confirm(email, otp, new_password):
     """Resets password using OTP."""
+    user = users_collection.find_one({"email": email})
+    if not user:
+        return False, "User not found."
+        
+    if user.get("otp") != otp:
+        return False, "Invalid Code."
+        
+    if datetime.utcnow() > user.get("otp_expiry", datetime.min):
+        return False, "Code Expired."
+        
+    # Update Password and Clear OTP
+    new_hash = hash_password(new_password)
+    users_collection.update_one(
+        {"email": email},
+        {"$set": {
+            "password_hash": new_hash, 
+            "otp": None, 
+            "otp_expiry": None
+        }}
+    )
+    return True, "Password successfully reset."
+
 # --- DESCOPE INTEGRATION ---
 try:
     from descope import DescopeClient
