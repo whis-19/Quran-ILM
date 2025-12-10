@@ -234,7 +234,7 @@ def login_page():
                          if not magic_email:
                              st.warning("Please enter email.")
                          else:
-                             success, msg = send_magic_link(magic_email)
+                             success, msg = send_magic_link(magic_email, intent="login")
                              if success:
                                  st.success(msg)
                              else:
@@ -256,15 +256,18 @@ def login_page():
         elif st.session_state.auth_mode == "signup":
             st.markdown("<p>Create a new account</p>", unsafe_allow_html=True)
             
-            with st.form("signup_form"):
-                email = st.text_input("Email Address", placeholder="name@example.com")
-                password = st.text_input("Create Password", type="password", placeholder="Strong Password (Min 8 chars, Aa1!)")
-                confirm = st.text_input("Confirm Password", type="password", placeholder="Confirm Password")
-                submitted = st.form_submit_button("Sign Up", type="primary")
+            # --- SIGNUP METHOD TOGGLE ---
+            signup_method = st.radio(
+                "Choose Signup Method", 
+                ["Password", "Magic Link ✨"], 
+                horizontal=True,
+                label_visibility="collapsed"
+            )
+            st.write("") # Spacer
 
-            # --- DISCLAIMER DIALOG ---
+            # --- DISCLAIMER DIALOG (Reused for both) ---
             @st.dialog("⚠️ Religious Disclaimer & Agreement")
-            def show_disclaimer(email, password):
+            def show_disclaimer(email, password=None, method="password"):
                 st.write("""
                 **Please read and accept the following before proceeding:**
                 
@@ -278,26 +281,52 @@ def login_page():
                 st.warning("By clicking 'I Agree', you acknowledge the above statement.")
                 
                 if st.button("I Agree & Verify", type="primary"):
-                    success, res_msg = create_user_pending(email, password, "user")
-                    if success:
-                        st.session_state.temp_email = email
-                        st.session_state.otp_expiry = time.time() + 600 # 10 Minutes
-                        st.success(res_msg)
-                        time.sleep(1.5)
-                        switch_to("verify_signup")
-                        st.rerun()
-                    else:
-                        st.error(res_msg)
+                    if method == "password":
+                        success, res_msg = create_user_pending(email, password, "user")
+                        if success:
+                            st.session_state.temp_email = email
+                            st.session_state.otp_expiry = time.time() + 600 # 10 Minutes
+                            st.success(res_msg)
+                            time.sleep(1.5)
+                            switch_to("verify_signup")
+                            st.rerun()
+                        else:
+                            st.error(res_msg)
+                    elif method == "magic_link":
+                        success, res_msg = send_magic_link(email, intent="signup")
+                        if success:
+                            st.success(res_msg)
+                            time.sleep(2)
+                            st.rerun() # Refresh to let them check email
+                        else:
+                            st.error(res_msg)
 
-            if submitted:
-                if not email or not password:
-                    st.warning("Please fill in all fields.")
-                elif password != confirm:
-                    st.error("Passwords do not match.")
-                else:
-                    # Show Dialog instead of direct execution
-                    show_disclaimer(email, password)
-                        
+            if signup_method == "Password":
+                with st.form("signup_form"):
+                    email = st.text_input("Email Address", placeholder="name@example.com")
+                    password = st.text_input("Create Password", type="password", placeholder="Strong Password (Min 8 chars, Aa1!)")
+                    confirm = st.text_input("Confirm Password", type="password", placeholder="Confirm Password")
+                    submitted = st.form_submit_button("Sign Up", type="primary")
+
+                if submitted:
+                    if not email or not password:
+                        st.warning("Please fill in all fields.")
+                    elif password != confirm:
+                        st.error("Passwords do not match.")
+                    else:
+                        show_disclaimer(email, password=password, method="password")
+
+            elif signup_method == "Magic Link ✨":
+                with st.container(border=True):
+                    st.write("Register with your email to receive a magic signup link.")
+                    signup_email = st.text_input("Email Address")
+                    
+                    if st.button("Sign Up with Magic Link", type="primary"):
+                         if not signup_email:
+                             st.warning("Please enter email.")
+                         else:
+                             show_disclaimer(signup_email, method="magic_link")
+
             st.markdown("---")
             if st.button("Already have an account? Sign In"):
                 switch_to("login")

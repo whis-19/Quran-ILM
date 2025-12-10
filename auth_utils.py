@@ -239,8 +239,11 @@ except Exception:
     descope_client = None
     print("[AUTH] Descope SDK not found or config error")
 
-def send_magic_link(email, redirect_url=None):
-    """Sends a magic link to the user via Descope."""
+def send_magic_link(email, redirect_url=None, intent="login"):
+    """
+    Sends a magic link to the user via Descope.
+    intent: 'login' (must exist) or 'signup' (must NOT exist)
+    """
     if not descope_client:
         return False, "Descope not configured."
     
@@ -248,7 +251,18 @@ def send_magic_link(email, redirect_url=None):
     if email in config.RESTRICTED_EMAILS:
         return False, "Sorry, this email cannot login using Magic Link."
 
-    # 2. Use Configured Base URL if not provided
+    # 2. Strict Intent Checks
+    user_exists = users_collection.find_one({"email": email})
+    
+    if intent == "login":
+        if not user_exists:
+            return False, "User not found. Please Sign Up first."
+            
+    elif intent == "signup":
+        if user_exists:
+            return False, "Account already exists. Please Log In."
+
+    # 3. Use Configured Base URL if not provided
     if not redirect_url:
         redirect_url = config.BASE_URL
     
