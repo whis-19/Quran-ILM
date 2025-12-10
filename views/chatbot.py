@@ -126,6 +126,24 @@ if not st.session_state.get("authenticated"):
 st.title("🤖 Quran-ILM AI Assistant")
 st.caption("Ask questions about the Quran and Tafsir. Powered by RAG.")
 
+# --- INTRO & GUIDELINES ---
+with st.expander("ℹ️ How to use this Assistant"):
+    st.markdown("""
+    **Welcome!** This AI Assistant answers questions using a knowledgeable database of the Quran and Tafsir. 
+    It uses **RAG (Retrieval-Augmented Generation)** to ensure answers are grounded in authentic sources.
+    
+    **Guidelines & Restrictions:**
+    - **Scope**: Ask questions strictly related to Quranic verses, Tafsir, and Islamic history.
+    - **Language**: Best supported in English. Arabic and Urdu are experimental.
+    - **Accuracy**: The AI attempts to provide answers from the provided context. Always verify with the provided references.
+    
+    **Sample Questions:**
+    1. *What is the significance of Bismillah?*
+    2. *What does the Quran say about patience (Sabr)?*
+    3. *Who are the People of the Book?*
+    4. *Explain the concept of Tawheed.*
+    """)
+
 # Chat History
 if "messages" not in st.session_state:
     st.session_state.messages = []
