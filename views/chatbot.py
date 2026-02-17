@@ -81,7 +81,7 @@ def vector_search(query, k=5):
             model=EMBEDDING_MODEL,
             content=query,
             task_type="retrieval_query",
-            output_dimensionality=768 # Force 768 dimensions to match index
+            output_dimensionality=3072 # Force 3072 dimensions to match data
         )
         query_vector = embedding_result['embedding']
     except Exception as e:

@@ -150,7 +150,7 @@ def create_vector_index(collection):
         "definition": {
             "fields": [
                 {
-                    "numDimensions": 768,
+                    "numDimensions": 3072,
                     "path": "embedding",
                     "similarity": "cosine",
                     "type": "vector"
@@ -206,7 +206,7 @@ def get_embedding(text):
             content=text,
             task_type="retrieval_document",
             title="Embedded Document",
-            output_dimensionality=768 # Force 768 dimensions
+            output_dimensionality=3072 # Force 3072 dimensions
         )
         return result['embedding']
     except Exception as e:

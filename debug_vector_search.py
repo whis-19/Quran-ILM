@@ -33,38 +33,73 @@ try:
     print(f"\nTotal documents in collection: {count}")
 
     if count > 0:
-        print("Sample document:")
-        print(collection.find_one({}, {"embedding": 0})) # Hide embedding for brevity
+        print("Sample document structure:")
+        doc = collection.find_one({})
+        print(f"Keys: {list(doc.keys())}")
+        if 'embedding' in doc:
+            print(f"Embedding length: {len(doc['embedding'])}")
+            # Check first few elements
+            print(f"Embedding sample: {doc['embedding'][:5]}...")
+        else:
+            print("WARNING: 'embedding' field missing!")
+            
+        if 'metadata' in doc:
+            print(f"Metadata: {doc['metadata']}")
 
 except Exception as e:
     print(f"Error listing indexes: {e}")
 
 # Try a dummy search
 try:
-    print("\n--- Attempting Dummy Vector Search ---")
-    # Dummy 768-dim vector (non-zero)
-    dummy_vector = [0.1] * 768
+    print("\n--- Attempting Real Vector Search ('Bismillah') ---")
+    
+    # Configure GenAI
+    import google.generativeai as genai
+    apiKey = config.get_env("GOOGLE_API_KEY")
+    if not apiKey:
+        print("API Key missing")
+        exit()
+        
+    genai.configure(api_key=apiKey)
+    
+    # Generate Embedding
+    model = "models/gemini-embedding-001" # Or pull from config
+    print(f"Embedding query with {model}...")
+    
+    embedding_result = genai.embed_content(
+        model=model,
+        content="What is the significance of Bismillah?",
+        task_type="retrieval_query",
+        output_dimensionality=3072
+    )
+    query_vector = embedding_result['embedding']
+    print(f"Generated Vector Length: {len(query_vector)}")
     
     pipeline = [
         {
             "$vectorSearch": {
                 "index": "default", 
                 "path": "embedding",
-                "queryVector": dummy_vector,
-                "numCandidates": 10, 
-                "limit": 1
+                "queryVector": query_vector,
+                "numCandidates": 100, 
+                "limit": 5
             }
         },
         {
             "$project": {
                 "_id": 0,
+                "text": 1,
                 "score": {"$meta": "vectorSearchScore"}
             }
         }
     ]
     
     results = list(collection.aggregate(pipeline))
-    print(f"Search successful. Found {len(results)} results.")
+    print(f"\nSearch successful. Found {len(results)} results.")
+    
+    for i, doc in enumerate(results):
+        print(f"\nResult {i+1} (Score: {doc.get('score', 0):.4f}):")
+        print(f"Text: {doc.get('text', '')[:200]}...") # truncate
+        
 except Exception as e:
     print(f"\n[ERROR] Search Failed:\n{e}")
-
