@@ -205,7 +205,8 @@ def get_embedding(text):
             model=EMBEDDING_MODEL,
             content=text,
             task_type="retrieval_document",
-            title="Embedded Document" 
+            title="Embedded Document",
+            output_dimensionality=768 # Force 768 dimensions
         )
         return result['embedding']
     except Exception as e:

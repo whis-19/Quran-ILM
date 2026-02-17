@@ -136,6 +136,7 @@ SMTP_PASSWORD = get_env("SMTP_PASSWORD")
 # AI / LLM CONFIGURATION
 # ==========================================
 GOOGLE_API_KEY = get_env("GOOGLE_API_KEY") # Removed default
+EMBEDDING_DIMENSIONS = 768 # Force 768 dimensions for consistency with MongoDB index
 
 # ==========================================
 # AUTHENTICATION CONFIGURATION (Descope)

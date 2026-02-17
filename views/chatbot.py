@@ -80,7 +80,8 @@ def vector_search(query, k=5):
         embedding_result = genai.embed_content(
             model=EMBEDDING_MODEL,
             content=query,
-            task_type="retrieval_query"
+            task_type="retrieval_query",
+            output_dimensionality=768 # Force 768 dimensions to match index
         )
         query_vector = embedding_result['embedding']
     except Exception as e:
