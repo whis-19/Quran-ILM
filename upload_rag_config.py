@@ -11,7 +11,7 @@ DEFAULT_CONFIG = {
     "config_id": "default_rag_config", # Unique ID to ensure singleton config
     "GOOGLE_API_KEY": config.GOOGLE_API_KEY, # Load from env or leave empty for user to fill
     "LLM_MODEL": "gemini-2.5-flash",
-    "EMBEDDING_MODEL": "text-embedding-004",
+    "EMBEDDING_MODEL": "gemini-embedding-001",
     "CHUNK_SIZE": 500,
     "CHUNK_OVERLAP": 50
 }

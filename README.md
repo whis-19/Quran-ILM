@@ -31,7 +31,7 @@
 -   **Database**: MongoDB Atlas (Metadata, Chat History, Logs) & MongoDB Vector Search.
 -   **Storage**: MongoDB GridFS (Raw PDF/Text storage).
 -   **AI Model**: Google Gemini 1.5 Flash (via `google-generativeai`).
--   **Embeddings**: Google `text-embedding-004`.
+-   **Embeddings**: `gemini-embedding-001` (768 dimensions).
 -   **Email**: SMTP (Gmail) for OTPs and Notifications.
 
 ---

@@ -15,7 +15,7 @@ COLLECTION_LLM_CONFIGS = "llmConfigs"
 COLLECTION_VOICE_REC = "voiceRecitations"
 COLLECTION_VECTOR = "ragChunks"
 
-# --- VECTOR CONFIGURATION (Must match your chosen model: text-embedding-004) ---
+# --- VECTOR CONFIGURATION (Must match your chosen model: gemini-embedding-001) ---
 EMBEDDING_DIMENSIONS = 768 
 
 # --- 2. CONNECT TO MONGODB ---

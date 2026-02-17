@@ -65,7 +65,7 @@ def get_conf(key, default, cast_type=str):
         return default
 
 GOOGLE_API_KEY = get_conf("GOOGLE_API_KEY", "")
-EMBEDDING_MODEL = get_conf("EMBEDDING_MODEL", "models/text-embedding-004")
+EMBEDDING_MODEL = get_conf("EMBEDDING_MODEL", "models/gemini-embedding-001")
 # Ensure model name has 'models/' prefix for some versions of SDK, though simple name usually works
 if not EMBEDDING_MODEL.startswith("models/"):
     EMBEDDING_MODEL = f"models/{EMBEDDING_MODEL}"

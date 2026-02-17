@@ -51,9 +51,8 @@ with st.form("rag_config_form"):
             "LLM Model", 
             value=current_config.get("LLM_MODEL", "gemini-2.5-flash")
         )
-        embedding_model = st.text_input(
             "Embedding Model", 
-            value=current_config.get("EMBEDDING_MODEL", "text-embedding-004")
+            value=current_config.get("EMBEDDING_MODEL", "gemini-embedding-001")
         )
         top_k = st.number_input(
             "Top K (Retrieval)",
@@ -125,7 +124,7 @@ if start_indexing:
     current_env = os.environ.copy()
     current_env["GOOGLE_API_KEY"] = indexing_conf.get("GOOGLE_API_KEY", "") or os.getenv("GOOGLE_API_KEY", "")
     current_env["LLM_MODEL"] = indexing_conf.get("LLM_MODEL", "gemini-2.5-flash")
-    current_env["EMBEDDING_MODEL"] = indexing_conf.get("EMBEDDING_MODEL", "text-embedding-004")
+    current_env["EMBEDDING_MODEL"] = indexing_conf.get("EMBEDDING_MODEL", "gemini-embedding-001")
     current_env["CHUNK_SIZE"] = str(indexing_conf.get("CHUNK_SIZE", 500))
     current_env["CHUNK_OVERLAP"] = str(indexing_conf.get("CHUNK_OVERLAP", 50))
     

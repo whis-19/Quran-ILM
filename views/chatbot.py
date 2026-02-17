@@ -38,7 +38,7 @@ def init_resources():
 
     google_api_key = get_conf("GOOGLE_API_KEY", "")
     llm_model_name = get_conf("LLM_MODEL", "gemini-2.5-flash")
-    embedding_model_name = get_conf("EMBEDDING_MODEL", "text-embedding-004")
+    embedding_model_name = get_conf("EMBEDDING_MODEL", "gemini-embedding-001")
     top_k = int(get_conf("TOP_K", 5))
     temperature = float(get_conf("TEMPERATURE", 0.3))
     
@@ -109,8 +109,18 @@ def vector_search(query, k=5):
     ]
     
     # 3. Execute
-    results = list(collection_rag.aggregate(pipeline))
-    return results
+    # 3. Execute
+    try:
+        results = list(collection_rag.aggregate(pipeline))
+        return results
+    except pymongo.errors.OperationFailure as e:
+        st.error(f"MongoDB OperationFailure: {e.details}")
+        print(f"MongoDB OperationFailure: {e.details}") # Log to console
+        return []
+    except Exception as e:
+        st.error(f"Vector Search Error: {e}")
+        print(f"Vector Search Error: {e}")
+        return []
 
 # --- 3. UI LAYOUT ---
 # st.set_page_config(page_title="Quran AI Assistant", page_icon="🤖")
