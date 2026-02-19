@@ -3,15 +3,16 @@ import pymongo
 import os
 import google.generativeai as genai
 from datetime import datetime
-from datetime import datetime
 import config
+import time
+import uuid
+from auth_utils import send_email
 
 # --- CONFIGURATION (Default Fallbacks) ---
 DEFAULT_RAG_DB = "Quran_RAG_Vectors"
 VECTOR_COLLECTION = "ragChunks"
 
 # --- 1. INITIALIZATION & CONFIG LOADING ---
-@st.cache_resource
 @st.cache_resource
 def init_resources():
     # A. Connect to Primary DB (Metadata & Config)
@@ -70,7 +71,55 @@ except Exception as e:
     st.error(f"Initialization Error: {e}")
     st.stop()
 
-# --- 2. VECTOR SEARCH FUNCTION ---
+# --- 2. SESSION MANAGEMENT ---
+
+if "current_chat_id" not in st.session_state:
+    st.session_state.current_chat_id = None
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+if "temp_mode" not in st.session_state:
+    st.session_state.temp_mode = False
+
+def create_new_chat():
+    """Starts a new chat session."""
+    st.session_state.current_chat_id = str(uuid.uuid4())
+    st.session_state.messages = []
+    st.session_state.temp_mode = False 
+
+def load_chat(chat_id):
+    """Loads a chat from DB."""
+    chat_doc = db_meta["chat_sessions"].find_one({"_id": chat_id})
+    if chat_doc:
+        st.session_state.current_chat_id = chat_id
+        st.session_state.messages = chat_doc.get("messages", [])
+        st.session_state.temp_mode = chat_doc.get("is_temp", False)
+    else:
+         st.error("Chat not found.")
+
+def delete_chat(chat_id):
+    db_meta["chat_sessions"].delete_one({"_id": chat_id})
+    if st.session_state.current_chat_id == chat_id:
+        create_new_chat()
+    st.rerun()
+
+def rename_chat(chat_id, new_title):
+    db_meta["chat_sessions"].update_one({"_id": chat_id}, {"$set": {"title": new_title}})
+    st.rerun()
+
+def toggle_bookmark(chat_id, current_status):
+    """Toggles the bookmark status of a chat."""
+    new_status = not current_status
+    db_meta["chat_sessions"].update_one({"_id": chat_id}, {"$set": {"is_bookmarked": new_status}})
+    st.rerun()
+
+@st.dialog("Rename Chat")
+def rename_dialog(chat_id, current_title):
+    new_name = st.text_input("Enter new name", value=current_title)
+    if st.button("Save Name"):
+        rename_chat(chat_id, new_name)
+        st.rerun()
+
+# --- 3. VECTOR SEARCH FUNCTION ---
 def vector_search(query, k=5):
     """
     Performs Atlas Vector Search using the raw MongoDB Aggregation pipeline.
@@ -110,7 +159,6 @@ def vector_search(query, k=5):
     ]
     
     # 3. Execute
-    # 3. Execute
     try:
         results = list(collection_rag.aggregate(pipeline))
         return results
@@ -123,8 +171,42 @@ def vector_search(query, k=5):
         print(f"Vector Search Error: {e}")
         return []
 
-# --- 3. UI LAYOUT ---
-# st.set_page_config(page_title="Quran AI Assistant", page_icon="🤖")
+# --- 3. UI LAYOUT & SIDEBAR ---
+
+# Custom CSS (Voice Input + General Polish)
+st.markdown("""
+<style>
+    /* Voice Input Positioning */
+    div[data-testid="stAudioInput"] label { display: none; }
+    div[data-testid="stAudioInput"] {
+        position: fixed;
+        bottom: 82.1px; 
+        right: 120px;
+        z-index: 1001;
+        width: 30px; 
+        height: 30px;
+    }
+    div[data-testid="stAudioInput"] > div {
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+    }
+    div[data-testid="stAudioInput"] canvas, div[data-testid="stAudioInput"] audio, div[data-testid="stAudioInput"] div[data-testid="stMarkdownContainer"] {
+        display: none !important;
+    }
+    div[data-testid="stAudioInput"] button {
+        background-color: transparent !important;
+        border: none !important;
+        color: inherit !important;
+        padding: 0 !important;
+    }
+    div[data-testid="stAudioInput"] button:hover {
+        transform: scale(1.1);
+        color: #FF4B4B !important;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # --- AUTH CHECK ---
 if not st.session_state.get("authenticated"):
@@ -132,152 +214,331 @@ if not st.session_state.get("authenticated"):
     st.info("Redirecting to Login...")
     st.switch_page("Home.py")
     st.stop()
-# ------------------
+
+# --- SIDEBAR: CHAT HISTORY ---
+with st.sidebar:
+    st.title("💬 Chats")
+    
+    # New Chat Button
+    if st.button("➕ New Chat", use_container_width=True, type="primary"):
+        create_new_chat()
+        st.rerun()
+    
+    # Temp Mode Toggle
+    st.write("---")
+    is_temp = st.toggle("🕵️ Temp Chat (No Save)", value=st.session_state.temp_mode)
+    if is_temp != st.session_state.temp_mode:
+        st.session_state.temp_mode = is_temp
+    
+    # Search & Sort
+    st.write("---")
+    search_query = st.text_input("🔍 Search", placeholder="Filter by name...", label_visibility="collapsed")
+    
+    # Sort Options
+    c_sort1, c_sort2 = st.columns([0.3, 0.7])
+    with c_sort1:
+        st.caption("Sort:")
+    with c_sort2:
+        sort_option = st.selectbox("Sort By", ["Recent", "Name"], label_visibility="collapsed")
+        
+    sort_order = pymongo.DESCENDING if sort_option == "Recent" else pymongo.ASCENDING
+    sort_field = "updated_at" if sort_option == "Recent" else "title"
+    
+    # Fetch User's Chats
+    user_email = st.session_state.get("user_email")
+    if user_email:
+        # Fetch all non-temp chats
+        all_chats = list(db_meta["chat_sessions"].find(
+            {"user_email": user_email, "is_temp": False}, 
+            {"title": 1, "updated_at": 1, "is_bookmarked": 1}
+        ).sort(sort_field, sort_order))
+        
+        # Filter by Search Query
+        if search_query:
+            all_chats = [c for c in all_chats if search_query.lower() in c.get("title", "").lower()]
+        
+        # Filter Bookmarks
+        bookmarked_chats = [c for c in all_chats if c.get("is_bookmarked")]
+        
+        # --- SECTION: BOOKMARKS ---
+        if bookmarked_chats:
+            st.caption(f"⭐ Bookmarked ({len(bookmarked_chats)})")
+            for chat in bookmarked_chats:
+                c1, c2 = st.columns([0.8, 0.2])
+                with c1:
+                    title = chat.get("title", "Untitled")
+                    if st.button(f"⭐ {title}", key=f"bm_load_{chat['_id']}", use_container_width=True):
+                        load_chat(chat["_id"])
+                        st.rerun()
+                with c2:
+                     # Menu for Bookmarked items
+                    with st.popover("⋮", use_container_width=True):
+                        if st.button("Rename", key=f"r_bm_{chat['_id']}"):
+                            rename_dialog(chat["_id"], chat.get("title", ""))
+                        
+                        if st.button("Un-Bookmark", key=f"unbm_{chat['_id']}"):
+                            toggle_bookmark(chat["_id"], True)
+                            
+                        if st.button("Delete", key=f"del_bm_{chat['_id']}", type="primary"):
+                            delete_chat(chat["_id"])
+            st.write("---")
+        else:
+             st.caption("⭐ 0 Bookmarked")
+             st.write("---")
+
+        # --- SECTION: HISTORY ---
+        st.caption(f"🕒 History ({len(all_chats)})")
+        
+        # Render All Chats
+        for chat in all_chats:
+            c1, c2 = st.columns([0.8, 0.2])
+            with c1:
+                # truncate title
+                title = chat.get("title", "Untitled Chat")
+                if len(title) > 20: title = title[:20] + "..."
+                
+                # Highlight active?
+                clicked = st.button(title, key=f"load_{chat['_id']}", use_container_width=True)
+                if clicked:
+                    load_chat(chat["_id"])
+                    st.rerun()
+                    
+            with c2:
+                # Context Menu (Delete/Rename/Bookmark)
+                with st.popover("⋮", use_container_width=True):
+                    # Rename -> Opens Dialog
+                    if st.button("Rename", key=f"ren_{chat['_id']}"):
+                        rename_dialog(chat["_id"], chat.get("title", ""))
+                    
+                    # Bookmark Toggle
+                    is_bm = chat.get("is_bookmarked", False)
+                    bm_label = "Un-Bookmark" if is_bm else "Bookmark"
+                    if st.button(bm_label, key=f"tog_bm_{chat['_id']}"):
+                        toggle_bookmark(chat["_id"], is_bm)
+                        
+                    # Delete
+                    if st.button("Delete", key=f"del_{chat['_id']}", type="primary"):
+                        delete_chat(chat["_id"])
+
+# --- MAIN PAGE ---
 
 st.title("🤖 Quran-ILM AI Assistant")
-st.caption("Ask questions about the Quran and Tafsir. Powered by RAG.")
+if st.session_state.temp_mode:
+    st.caption("🕵️ **Temporary Mode Active**: Chat will not be saved.")
+else:
+    st.caption("Ask questions about the Quran and Tafsir. Powered by RAG.")
 
-# --- INTRO & GUIDELINES ---
-with st.expander("ℹ️ How to use this Assistant"):
-    st.markdown("""
-    **Welcome!** This AI Assistant answers questions using a knowledgeable database of the Quran and Tafsir. 
-    It uses **RAG (Retrieval-Augmented Generation)** to ensure answers are grounded in authentic sources.
-    
-    **Guidelines & Restrictions:**
-    - **Scope**: Ask questions strictly related to Quranic verses, Tafsir, and Islamic history.
-    - **Language**: Currently only supported in English. 
-    - **Accuracy**: The AI attempts to provide answers from the provided context. Always verify with the provided references.
-    
-    **Sample Questions:**
-    1. *What is the significance of Bismillah?*
-    2. *What does the Quran say about patience (Sabr)?*
-    3. *Who are the People of the Book?*
-    4. *Explain the concept of Tawheed.*
-    """)
+# Initialize New Chat if needed (First Login generally has none, create one)
+if not st.session_state.current_chat_id:
+    create_new_chat()
 
-# Chat History
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
+# Display Messages
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
+        if message.get("references"):
+             with st.expander("📚 References"):
+                # Simplified Ref View
+                for ref in message["references"]:
+                    st.markdown(f"- {ref.get('source', 'Unknown')} (Score: {ref.get('score', 0):.2f})")
 
 # --- 4. CHAT LOGIC ---
-if prompt := st.chat_input("Ask a question..."):
-    # Display User Message
+
+# Voice Input Logic (Compact & Professional)
+audio_value = st.audio_input("Voice Input", label_visibility="collapsed")
+
+prompt = None
+audio_prompt = None
+
+if audio_value:
+    audio_bytes = audio_value.getvalue()
+    if "last_audio_bytes" not in st.session_state or st.session_state.last_audio_bytes != audio_bytes:
+        # User Feedback / "Thoughtful" Animation
+        with st.status("🎧 Processing Voice Command...", expanded=True) as status:
+            st.write("Receiving audio stream...")
+            time.sleep(0.5) # Slight delay for effect
+            
+            st.write("Transcribing with Gemini...")
+            try:
+                transcription_model = genai.GenerativeModel(LLM_MODEL)
+                response = transcription_model.generate_content(
+                    [
+                        "Transcribe the following audio request into English. If the audio is in another language, translate it to English. Do not add any extra text or commentary.",
+                        {"mime_type": "audio/wav", "data": audio_bytes}
+                    ]
+                )
+                
+                # Check for valid response
+                if response.parts:
+                    audio_prompt = response.text.strip()
+                    st.session_state.last_audio_bytes = audio_bytes
+                    st.toast("✅ Transcription complete!", icon="✅")
+                else:
+                    # Graceful fallback for empty/blocked responses
+                    st.toast("⚠️ No speech detected or audio unclear.", icon="⚠️")
+                    
+            except ValueError:
+                # Handle "Invalid operation: The response.text quick accessor..."
+                st.toast("⚠️ Audio processing failed. Please try again.", icon="⚠️")
+            except Exception as e:
+                # Generic error but log to console, show toast to user
+                print(f"Transcription Error: {e}")
+                st.toast("⚠️ Error processing audio.", icon="⚠️")
+            
+            status.update(label="Voice Processed", state="complete", expanded=False)
+
+# Main Chat Input (Text)
+text_input = st.chat_input("Ask a question about the Quran...")
+
+# Determine final prompt source
+if text_input:
+    prompt = text_input
+elif audio_prompt:
+    prompt = audio_prompt
+
+if prompt:
+    # 1. Append User Message
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
         
-    # Generate Response
+    # 2. Save to DB (User)
+    if not st.session_state.temp_mode:
+        db_meta["chat_sessions"].update_one(
+            {"_id": st.session_state.current_chat_id},
+            {
+                "$set": {
+                    "user_email": st.session_state.user_email,
+                    "updated_at": datetime.utcnow()
+                },
+                "$setOnInsert": {"created_at": datetime.utcnow(), "title": "New Chat", "is_temp": False},
+                "$push": {"messages": {"role": "user", "content": prompt, "timestamp": datetime.utcnow()}}
+            },
+            upsert=True
+        )
+
+    # 3. Process Response
     with st.chat_message("assistant"):
         message_placeholder = st.empty()
         full_response = ""
-        token_usage = {} # Initialize token_usage
         
-        with st.spinner("Searching knowledge base..."):
-            # A. Retrieve Context
-            results = vector_search(prompt, k=TOP_K)
-            
-            context_str = ""
-            references = []
-            
-            if results:
-                for idx, doc in enumerate(results):
-                    text = doc.get('text', '')
-                    meta = doc.get('metadata', {})
-                    source = meta.get('source', 'Unknown File')
-                    score = doc.get('score', 0)
-                    
-                    context_str += f"Source ({idx+1}): {source}\nContent: {text}\n\n"
-                    
-                    # Store details for display
-                    ref_details = {
-                        "source": source,
-                        "text": text,
-                        "score": score,
-                        "meta": meta
-                    }
-                    references.append(ref_details)
-
+        # A. Vector Search
+        with st.status("🔍 Searching Quran & Tafsir...", expanded=False) as status:
+            context_results = vector_search(prompt, k=TOP_K)
+            if context_results:
+                status.write("✅ Found relevant verses.")
             else:
-                context_str = "No relevant context found in the database."
-
-        # B. Generate Answer
-        system_instruction = """You are a knowledgeable assistant specializing in the Quran and Tafsir.
-Answer the user's question based ONLY on the following context.
-If the context does not contain the answer, say "I cannot find the answer in the provided documents."
-"""
-        user_prompt = f"""Context:
-{context_str}
-
-Question: 
-{prompt}
-
-Answer:"""
-
+                status.write("⚠️ No direct matches found. Using general knowledge.")
+            status.update(label="Search Complete", state="complete", expanded=False)
+            
+        # B. Construct Context
+        context_text = ""
+        references = []
+        
+        for doc in context_results:
+            text = doc.get('text', '')
+            meta = doc.get('metadata', {})
+            source = meta.get('source', 'Unknown')
+            tafsir = meta.get('tafsirName', 'Unknown')
+            score = doc.get('score', 0)
+            
+            context_text += f"Source ({source} - {tafsir}):\n{text}\n\n"
+            references.append({"source": source, "score": score})
+            
+        # C. Generate Answer
+        system_instruction = """
+        You are a knowledgeable Islamic scholar assistant. 
+        Answer the user's question using strictly the provided context.
+        If the answer is not in the context, state that you cannot find it in the provided sources, 
+        but verify if it is a general Islamic concept you can explain with a disclaimer.
+        Always maintain a respectful and scholarly tone.
+        """
+        
         try:
-            model = genai.GenerativeModel(
-                model_name=LLM_MODEL, 
-                system_instruction=system_instruction
-            )
+            model = genai.GenerativeModel(LLM_MODEL, system_instruction=system_instruction)
+            
+            final_prompt = f"""
+            Context:
+            {context_text}
+            
+            Question: {prompt}
+            
+            Answer:
+            """
             
             # Stream response
-            response = model.generate_content(
-                user_prompt, 
-                stream=True,
-                generation_config=genai.types.GenerationConfig(temperature=TEMPERATURE)
-            )
-            
+            response = model.generate_content(final_prompt, stream=True)
             for chunk in response:
                 if chunk.text:
                     full_response += chunk.text
                     message_placeholder.markdown(full_response + "▌")
             
-            # Capture Usage Metadata (if available)
-            try:
-                # After iteration, some SDK versions populate this
-                if response.usage_metadata:
-                    token_usage = {
-                        "prompt_tokens": response.usage_metadata.prompt_token_count,
-                        "candidates_tokens": response.usage_metadata.candidates_token_count,
-                        "total_tokens": response.usage_metadata.total_token_count
-                    }
-            except:
-                pass
-
-            # Final output with references
             message_placeholder.markdown(full_response)
             
+            # Show References in Accordion
             if references:
-                with st.expander("📚 References / Sources"):
-                    for i, ref in enumerate(references):
-                        st.markdown(f"**{i+1}. {ref['source']}** (Relevance: {ref['score']:.4f})")
-                        if 'surah' in ref['meta']:
-                            st.caption(f"Surah: {ref['meta']['surah']}")
-                        st.text(ref['text']) # Show actual text content
-                        st.divider()
-                        
+                with st.expander("📚 Sources & References"):
+                    for ref in references:
+                       st.markdown(f"- **{ref['source']}** (Confidence: {ref['score']:.2f})")
+            
         except Exception as e:
-            st.error(f"Error generating response: {e}")
-            full_response = "I encountered an error while processing your request."
-            message_placeholder.markdown(full_response)
-            token_usage = {}
+            error_str = str(e)
+            if "429" in error_str or "Quota exceeded" in error_str:
+                full_response = "⚠️ **System is down for maintenance.**\n\nPlease contact fypquranllm@gmail.com for details."
+                # Show error in UI
+                message_placeholder.error(full_response)
+                
+                # Auto-Send Email to Admin
+                email_subject = "🚨 CRITICAL: Gemini Quota Exceeded"
+                email_body = f"""
+                <h2>System Outage Alert</h2>
+                <p>The Gemini API Quota has been exceeded, causing a service disruption.</p>
+                <p><b>Error Details:</b></p>
+                <pre>{error_str}</pre>
+                <p><b>User Email:</b> {st.session_state.get('user_email', 'Unknown')}</p>
+                <p><b>Time:</b> {datetime.utcnow()}</p>
+                """
+                # Send asynchronously/non-blocking if possible, but st blocks anyway
+                send_email("fypquranllm@gmail.com", email_subject, email_body)
+                
+            else:
+                full_response = f"I encountered an error generating the response: {e}"
+                message_placeholder.error(full_response)
 
-    # Save Assistant Message
-    st.session_state.messages.append({"role": "assistant", "content": full_response})
+    # 4. Append Assistant Message
+    # Note: We store references in the message dict for history display
+    msg_obj = {"role": "assistant", "content": full_response, "references": references}
+    st.session_state.messages.append(msg_obj)
     
-    # --- SAVE TO MONGODB ---
-    try:
-        chat_log = {
-            "timestamp": datetime.utcnow(),
-            "question": prompt,
-            "answer": full_response,
-            "references": references,
-            "tokens": token_usage
-        }
-        db_meta["chats"].insert_one(chat_log)
-        print(f"[INFO] Chat saved to DB.")
-    except Exception as e:
-        print(f"[ERROR] Failed to save chat log: {e}")
+    # 5. Save to DB (Assistant)
+    if not st.session_state.temp_mode:
+        db_meta["chat_sessions"].update_one(
+            {"_id": st.session_state.current_chat_id},
+            {
+                "$set": {"updated_at": datetime.utcnow()},
+                "$push": {"messages": {
+                    "role": "assistant", 
+                    "content": full_response, 
+                    "references": references,
+                    "timestamp": datetime.utcnow()
+                }}
+            }
+        )
+        
+        # 6. Auto-Rename 
+        if len(st.session_state.messages) <= 2:
+            # Generate a short title
+            try:
+                title_model = genai.GenerativeModel("gemini-2.5-flash") # Use a fast model
+                title_resp = title_model.generate_content(
+                    f"Generate a short, concise title (max 4-5 words) for this chat based on the first question: '{prompt}'. Do not use quotes."
+                )
+                if title_resp.text:
+                    new_title = title_resp.text.strip()
+                    db_meta["chat_sessions"].update_one(
+                        {"_id": st.session_state.current_chat_id},
+                        {"$set": {"title": new_title}}
+                    )
+                    st.rerun() # Refresh sidebar
+            except:
+                pass
