@@ -97,6 +97,7 @@ else:
         # --- USER ROUTES ---
         user_pages = [
             st.Page("views/chatbot.py", title="Chatbot", icon="🤖", default=True),
+            st.Page("views/user_feedback.py", title="Feedback", icon="✍️"),
         ]
         
         pg = st.navigation(
