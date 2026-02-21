@@ -16,3 +16,4 @@ pydantic
 langchain-chroma
 pypdf
 descope
+python-docx

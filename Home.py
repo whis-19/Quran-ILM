@@ -59,10 +59,22 @@ st.markdown("""
 
 # --- NAVIGATION LOGIC ---
 if not st.session_state.authenticated:
-    # --- GUEST (Login) ---
-    pg = st.navigation([st.Page("views/login.py", title="Login", icon="🔐")])
-    pg.run()
-    
+    # Initialize guest navigation flag
+    if "show_login_page" not in st.session_state:
+        st.session_state.show_login_page = False
+
+    if st.session_state.show_login_page:
+        # --- LOGIN PAGE ---
+        pg = st.navigation([st.Page("views/login.py", title="Login", icon="🔐")])
+        pg.run()
+    else:
+        # --- GUEST MODE: Direct access to chatbot (no login wall) ---
+        pg = st.navigation(
+            [st.Page("views/chatbot.py", title="Chatbot", icon="🤖", default=True)],
+            position="hidden"  # Hide nav tabs for guests
+        )
+        pg.run()
+
 else:
     # --- AUTHENTICATED ---
     
@@ -73,6 +85,9 @@ else:
         if st.button("🚪 Log Out"):
             st.session_state.authenticated = False
             st.session_state.role = None
+            st.session_state.user_email = None
+            st.session_state.guest_question_count = 0
+            st.session_state.show_login_page = False
             st.session_state.auth_mode = "login"
             st.rerun()
             

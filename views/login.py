@@ -314,7 +314,12 @@ def login_page():
                     elif password != confirm:
                         st.error("Passwords do not match.")
                     else:
-                        show_disclaimer(email, password=password, method="password")
+                        from auth_utils import validate_password_strength
+                        is_valid, msg = validate_password_strength(password)
+                        if not is_valid:
+                            st.error(f"⚠️ Weak password: {msg}")
+                        else:
+                            show_disclaimer(email, password=password, method="password")
 
             elif signup_method == "Magic Link":
                 with st.container(border=True):

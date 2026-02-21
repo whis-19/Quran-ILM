@@ -1,6 +1,7 @@
 import streamlit as st
 import pymongo
 import os
+import io
 import google.generativeai as genai
 from datetime import datetime
 import config
@@ -73,12 +74,19 @@ except Exception as e:
 
 # --- 2. SESSION MANAGEMENT ---
 
+# Guest question limit (how many free questions before signup prompt)
+GUEST_QUESTION_LIMIT = 3
+
 if "current_chat_id" not in st.session_state:
     st.session_state.current_chat_id = None
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "temp_mode" not in st.session_state:
     st.session_state.temp_mode = False
+if "guest_question_count" not in st.session_state:
+    st.session_state.guest_question_count = 0
+if "show_signup_prompt" not in st.session_state:
+    st.session_state.show_signup_prompt = False
 
 def create_new_chat():
     """Starts a new chat session."""
@@ -208,117 +216,202 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- AUTH CHECK ---
-if not st.session_state.get("authenticated"):
-    st.warning("Please Login first.")
-    st.info("Redirecting to Login...")
-    st.switch_page("Home.py")
-    st.stop()
+# --- FILE EXTRACTION HELPER ---
+DOC_MIME_TYPES = {
+    "pdf":  "application/pdf",
+    "txt":  "text/plain",
+    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "png":  "image/png",
+    "jpg":  "image/jpeg",
+    "jpeg": "image/jpeg",
+    "webp": "image/webp",
+    "gif":  "image/gif",
+}
+IMAGE_EXTS = {"png", "jpg", "jpeg", "webp", "gif"}
 
-# --- SIDEBAR: CHAT HISTORY ---
-with st.sidebar:
-    st.title("💬 Chats")
+def extract_file_content(uploaded_file):
+    """
+    Returns (content, mime_type, is_image).
+    - For images: content = raw bytes, is_image = True
+    - For text/pdf/docx: content = extracted str, is_image = False
+    """
+    ext = uploaded_file.name.rsplit(".", 1)[-1].lower()
+    mime = DOC_MIME_TYPES.get(ext, "application/octet-stream")
+    raw = uploaded_file.getvalue()
+
+    if ext in IMAGE_EXTS:
+        return raw, mime, True
+
+    if ext == "pdf":
+        try:
+            from pypdf import PdfReader
+            reader = PdfReader(io.BytesIO(raw))
+            text = "\n\n".join(page.extract_text() or "" for page in reader.pages)
+            return text.strip(), mime, False
+        except Exception as e:
+            return f"[PDF extraction failed: {e}]", mime, False
+
+    if ext == "docx":
+        try:
+            from docx import Document
+            doc = Document(io.BytesIO(raw))
+            text = "\n".join(p.text for p in doc.paragraphs)
+            return text.strip(), mime, False
+        except Exception as e:
+            return f"[DOCX extraction failed: {e}]", mime, False
+
+    if ext == "txt":
+        return raw.decode("utf-8", errors="replace").strip(), mime, False
+
+    return f"[Unsupported file type: {ext}]", mime, False
+
+# --- AUTH / GUEST CHECK ---
+IS_GUEST = not st.session_state.get("authenticated", False)
+
+# --- SAVE NUDGE DIALOG (ChatGPT-style) ---
+@st.dialog("💾 Save Your Conversations")
+def show_signup_prompt():
+    st.markdown("""
+    <div style="text-align:center; padding: 10px 0;">
+        <div style="font-size:48px; margin-bottom:10px;">☪️</div>
+        <h3 style="margin:0; color:#1f2937;">Don't lose your insights</h3>
+        <p style="color:#6b7280; font-size:0.95rem; margin-top:8px;">
+            Create a free account to save your chat history and
+            revisit your Quranic guidance anytime.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
     
-    # New Chat Button
-    if st.button("➕ New Chat", use_container_width=True, type="primary"):
-        create_new_chat()
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🚀 Sign Up Free", type="primary", use_container_width=True, key="dialog_signup"):
+            st.session_state.auth_mode = "signup"
+            st.session_state.show_login_page = True
+            st.session_state.show_signup_prompt = False
+            st.switch_page("Home.py")
+    with col2:
+        if st.button("🔐 Sign In", use_container_width=True, key="dialog_signin"):
+            st.session_state.auth_mode = "login"
+            st.session_state.show_login_page = True
+            st.session_state.show_signup_prompt = False
+            st.switch_page("Home.py")
+    
+    st.write("")
+    if st.button("Continue without account", use_container_width=True, key="dialog_dismiss"):
+        st.session_state.show_signup_prompt = False
         st.rerun()
     
-    # Temp Mode Toggle
-    st.write("---")
-    is_temp = st.toggle("🕵️ Temp Chat (No Save)", value=st.session_state.temp_mode)
-    if is_temp != st.session_state.temp_mode:
-        st.session_state.temp_mode = is_temp
-    
-    # Search & Sort
-    st.write("---")
-    search_query = st.text_input("🔍 Search", placeholder="Filter by name...", label_visibility="collapsed")
-    
-    # Sort Options
-    c_sort1, c_sort2 = st.columns([0.3, 0.7])
-    with c_sort1:
-        st.caption("Sort:")
-    with c_sort2:
-        sort_option = st.selectbox("Sort By", ["Recent", "Name"], label_visibility="collapsed")
+    st.markdown("<p style='text-align:center; color:#9ca3af; font-size:0.8rem; margin-top:8px;'>No credit card required.</p>", unsafe_allow_html=True)
+
+# --- SIDEBAR ---
+with st.sidebar:
+    if IS_GUEST:
+        # Guest: minimal sidebar — just sign in/up options
+        st.markdown("### ☪️ Quran-ILM")
+        st.markdown("<p style='color:#6b7280; font-size:0.85rem;'>Ask questions about the Quran and Tafsir.</p>", unsafe_allow_html=True)
+        st.write("---")
+        if st.button("🚀 Sign Up Free", type="primary", use_container_width=True, key="sidebar_signup"):
+            st.session_state.auth_mode = "signup"
+            st.session_state.show_login_page = True
+            st.switch_page("Home.py")
+        if st.button("🔐 Sign In", use_container_width=True, key="sidebar_signin"):
+            st.session_state.auth_mode = "login"
+            st.session_state.show_login_page = True
+            st.switch_page("Home.py")
+        # Show remaining questions counter
+        remaining = max(0, GUEST_QUESTION_LIMIT - st.session_state.guest_question_count)
+        st.write("---")
+        st.caption(f"� {remaining} free question{'s' if remaining != 1 else ''} remaining")
+    else:
+        # Authenticated: full chat history sidebar
+        st.title("💬 Chats")
         
-    sort_order = pymongo.DESCENDING if sort_option == "Recent" else pymongo.ASCENDING
-    sort_field = "updated_at" if sort_option == "Recent" else "title"
-    
-    # Fetch User's Chats
-    user_email = st.session_state.get("user_email")
-    if user_email:
-        # Fetch all non-temp chats
-        all_chats = list(db_meta["chat_sessions"].find(
-            {"user_email": user_email, "is_temp": False}, 
-            {"title": 1, "updated_at": 1, "is_bookmarked": 1}
-        ).sort(sort_field, sort_order))
+        # New Chat Button
+        if st.button("➕ New Chat", use_container_width=True, type="primary"):
+            create_new_chat()
+            st.rerun()
         
-        # Filter by Search Query
-        if search_query:
-            all_chats = [c for c in all_chats if search_query.lower() in c.get("title", "").lower()]
+        # Temp Mode Toggle
+        st.write("---")
+        is_temp = st.toggle("🕵️ Temp Chat (No Save)", value=st.session_state.temp_mode)
+        if is_temp != st.session_state.temp_mode:
+            st.session_state.temp_mode = is_temp
         
-        # Filter Bookmarks
-        bookmarked_chats = [c for c in all_chats if c.get("is_bookmarked")]
+        # Search & Sort
+        st.write("---")
+        search_query = st.text_input("🔍 Search", placeholder="Filter by name...", label_visibility="collapsed")
         
-        # --- SECTION: BOOKMARKS ---
-        if bookmarked_chats:
-            st.caption(f"⭐ Bookmarked ({len(bookmarked_chats)})")
-            for chat in bookmarked_chats:
+        # Sort Options
+        c_sort1, c_sort2 = st.columns([0.3, 0.7])
+        with c_sort1:
+            st.caption("Sort:")
+        with c_sort2:
+            sort_option = st.selectbox("Sort By", ["Recent", "Name"], label_visibility="collapsed")
+            
+        sort_order = pymongo.DESCENDING if sort_option == "Recent" else pymongo.ASCENDING
+        sort_field = "updated_at" if sort_option == "Recent" else "title"
+        
+        # Fetch User's Chats
+        user_email = st.session_state.get("user_email")
+        if user_email:
+            # Fetch all non-temp chats
+            all_chats = list(db_meta["chat_sessions"].find(
+                {"user_email": user_email, "is_temp": False}, 
+                {"title": 1, "updated_at": 1, "is_bookmarked": 1}
+            ).sort(sort_field, sort_order))
+            
+            # Filter by Search Query
+            if search_query:
+                all_chats = [c for c in all_chats if search_query.lower() in c.get("title", "").lower()]
+            
+            # Filter Bookmarks
+            bookmarked_chats = [c for c in all_chats if c.get("is_bookmarked")]
+            
+            # --- SECTION: BOOKMARKS ---
+            if bookmarked_chats:
+                st.caption(f"⭐ Bookmarked ({len(bookmarked_chats)})")
+                for chat in bookmarked_chats:
+                    c1, c2 = st.columns([0.8, 0.2])
+                    with c1:
+                        title = chat.get("title", "Untitled")
+                        if st.button(f"⭐ {title}", key=f"bm_load_{chat['_id']}", use_container_width=True):
+                            load_chat(chat["_id"])
+                            st.rerun()
+                    with c2:
+                        with st.popover("⋮", use_container_width=True):
+                            if st.button("Rename", key=f"r_bm_{chat['_id']}"):
+                                rename_dialog(chat["_id"], chat.get("title", ""))
+                            if st.button("Un-Bookmark", key=f"unbm_{chat['_id']}"):
+                                toggle_bookmark(chat["_id"], True)
+                            if st.button("Delete", key=f"del_bm_{chat['_id']}", type="primary"):
+                                delete_chat(chat["_id"])
+                st.write("---")
+            else:
+                st.caption("⭐ 0 Bookmarked")
+                st.write("---")
+
+            # --- SECTION: HISTORY ---
+            st.caption(f"🕒 History ({len(all_chats)})")
+            
+            for chat in all_chats:
                 c1, c2 = st.columns([0.8, 0.2])
                 with c1:
-                    title = chat.get("title", "Untitled")
-                    if st.button(f"⭐ {title}", key=f"bm_load_{chat['_id']}", use_container_width=True):
+                    title = chat.get("title", "Untitled Chat")
+                    if len(title) > 20: title = title[:20] + "..."
+                    clicked = st.button(title, key=f"load_{chat['_id']}", use_container_width=True)
+                    if clicked:
                         load_chat(chat["_id"])
                         st.rerun()
                 with c2:
-                     # Menu for Bookmarked items
                     with st.popover("⋮", use_container_width=True):
-                        if st.button("Rename", key=f"r_bm_{chat['_id']}"):
+                        if st.button("Rename", key=f"ren_{chat['_id']}"):
                             rename_dialog(chat["_id"], chat.get("title", ""))
-                        
-                        if st.button("Un-Bookmark", key=f"unbm_{chat['_id']}"):
-                            toggle_bookmark(chat["_id"], True)
-                            
-                        if st.button("Delete", key=f"del_bm_{chat['_id']}", type="primary"):
+                        is_bm = chat.get("is_bookmarked", False)
+                        bm_label = "Un-Bookmark" if is_bm else "Bookmark"
+                        if st.button(bm_label, key=f"tog_bm_{chat['_id']}"):
+                            toggle_bookmark(chat["_id"], is_bm)
+                        if st.button("Delete", key=f"del_{chat['_id']}", type="primary"):
                             delete_chat(chat["_id"])
-            st.write("---")
-        else:
-             st.caption("⭐ 0 Bookmarked")
-             st.write("---")
-
-        # --- SECTION: HISTORY ---
-        st.caption(f"🕒 History ({len(all_chats)})")
-        
-        # Render All Chats
-        for chat in all_chats:
-            c1, c2 = st.columns([0.8, 0.2])
-            with c1:
-                # truncate title
-                title = chat.get("title", "Untitled Chat")
-                if len(title) > 20: title = title[:20] + "..."
-                
-                # Highlight active?
-                clicked = st.button(title, key=f"load_{chat['_id']}", use_container_width=True)
-                if clicked:
-                    load_chat(chat["_id"])
-                    st.rerun()
-                    
-            with c2:
-                # Context Menu (Delete/Rename/Bookmark)
-                with st.popover("⋮", use_container_width=True):
-                    # Rename -> Opens Dialog
-                    if st.button("Rename", key=f"ren_{chat['_id']}"):
-                        rename_dialog(chat["_id"], chat.get("title", ""))
-                    
-                    # Bookmark Toggle
-                    is_bm = chat.get("is_bookmarked", False)
-                    bm_label = "Un-Bookmark" if is_bm else "Bookmark"
-                    if st.button(bm_label, key=f"tog_bm_{chat['_id']}"):
-                        toggle_bookmark(chat["_id"], is_bm)
-                        
-                    # Delete
-                    if st.button("Delete", key=f"del_{chat['_id']}", type="primary"):
-                        delete_chat(chat["_id"])
 
 # --- MAIN PAGE ---
 
@@ -343,6 +436,23 @@ for message in st.session_state.messages:
                     st.markdown(f"- {ref.get('source', 'Unknown')} (Score: {ref.get('score', 0):.2f})")
 
 # --- 4. CHAT LOGIC ---
+
+# File Attachment (authenticated users only)
+uploaded_file = None
+if not IS_GUEST:
+    uploaded_file = st.file_uploader(
+        "📎 Attach a file",
+        type=["png", "jpg", "jpeg", "webp", "gif", "pdf", "txt", "docx"],
+        label_visibility="collapsed",
+        help="Attach an image or document — the AI will read and reference it in its answer.",
+        key="chat_attachment"
+    )
+    if uploaded_file:
+        ext = uploaded_file.name.rsplit(".", 1)[-1].lower()
+        if ext in IMAGE_EXTS:
+            st.image(uploaded_file, caption=f"📎 {uploaded_file.name}", use_container_width=False, width=260)
+        else:
+            st.info(f"📎 **{uploaded_file.name}** attached — ask your question below.")
 
 # Voice Input Logic (Compact & Professional)
 audio_value = st.audio_input("Voice Input", label_visibility="collapsed")
@@ -396,14 +506,31 @@ if text_input:
 elif audio_prompt:
     prompt = audio_prompt
 
-if prompt:
+if prompt or (uploaded_file and not prompt):
+    # Default prompt when only a file is attached
+    if not prompt and uploaded_file:
+        prompt = "Please analyse this file and answer any Quran or Islamic questions related to it. Describe its content."
+
+    # Build display label for attachment
+    attachment_label = f" \n\n📎 *{uploaded_file.name}*" if uploaded_file else ""
+
     # 1. Append User Message
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    st.session_state.messages.append({"role": "user", "content": prompt + attachment_label})
+    
+    # Increment guest counter
+    if IS_GUEST:
+        st.session_state.guest_question_count += 1
     with st.chat_message("user"):
         st.markdown(prompt)
+        if uploaded_file:
+            ext = uploaded_file.name.rsplit(".", 1)[-1].lower()
+            if ext in IMAGE_EXTS:
+                st.image(uploaded_file, width=220)
+            else:
+                st.caption(f"📎 {uploaded_file.name}")
         
-    # 2. Save to DB (User)
-    if not st.session_state.temp_mode:
+    # 2. Save to DB (User) — skip for guests
+    if not IS_GUEST and not st.session_state.temp_mode:
         db_meta["chat_sessions"].update_one(
             {"_id": st.session_state.current_chat_id},
             {
@@ -421,8 +548,8 @@ if prompt:
     with st.chat_message("assistant"):
         message_placeholder = st.empty()
         full_response = ""
-        
-        # A. Vector Search
+
+        # A. Vector Search (RAG)
         with st.status("🔍 Searching Quran & Tafsir...", expanded=False) as status:
             context_results = vector_search(prompt, k=TOP_K)
             if context_results:
@@ -430,65 +557,82 @@ if prompt:
             else:
                 status.write("⚠️ No direct matches found. Using general knowledge.")
             status.update(label="Search Complete", state="complete", expanded=False)
-            
-        # B. Construct Context
+
+        # B. Extract attachment content
+        file_content = None
+        file_is_image = False
+        file_mime = None
+        if uploaded_file:
+            uploaded_file.seek(0)
+            file_content, file_mime, file_is_image = extract_file_content(uploaded_file)
+
+        # C. Build context string from RAG results
         context_text = ""
         references = []
-        
         for doc in context_results:
             text = doc.get('text', '')
             meta = doc.get('metadata', {})
             source = meta.get('source', 'Unknown')
             tafsir = meta.get('tafsirName', 'Unknown')
             score = doc.get('score', 0)
-            
             context_text += f"Source ({source} - {tafsir}):\n{text}\n\n"
             references.append({"source": source, "score": score})
-            
-        # C. Generate Answer
+
+        # D. Generate Answer (multimodal-aware)
         system_instruction = """
-        You are a knowledgeable Islamic scholar assistant. 
+        You are a knowledgeable Islamic scholar assistant.
         Answer the user's question using strictly the provided context.
-        If the answer is not in the context, state that you cannot find it in the provided sources, 
+        If the answer is not in the context, state that you cannot find it in the provided sources,
         but verify if it is a general Islamic concept you can explain with a disclaimer.
         Always maintain a respectful and scholarly tone.
         """
-        
+
         try:
             model = genai.GenerativeModel(LLM_MODEL, system_instruction=system_instruction)
-            
-            final_prompt = f"""
-            Context:
-            {context_text}
-            
-            Question: {prompt}
-            
-            Answer:
-            """
-            
+
+            # Base text prompt
+            base_prompt = (
+                f"Context from Quran/Tafsir sources:\n{context_text}\n\n"
+                f"Question: {prompt}\n\nAnswer:"
+            )
+
+            # Build parts list: text first, then optional file
+            parts = [base_prompt]
+
+            if file_content is not None:
+                if file_is_image:
+                    # Append raw image bytes inline
+                    parts[0] += "\n\n[An image has been attached. Please analyse it in relation to the question above.]"
+                    parts.append({"mime_type": file_mime, "data": file_content})
+                else:
+                    # Inject extracted document text into the prompt
+                    parts = [(
+                        f"Context from Quran/Tafsir sources:\n{context_text}\n\n"
+                        f"--- ATTACHED DOCUMENT ({uploaded_file.name}) ---\n{file_content}\n"
+                        f"--- END OF DOCUMENT ---\n\n"
+                        f"Question: {prompt}\n\nAnswer:"
+                    )]
+
             # Stream response
-            response = model.generate_content(final_prompt, stream=True)
+            response = model.generate_content(parts, stream=True)
             for chunk in response:
                 if chunk.text:
                     full_response += chunk.text
                     message_placeholder.markdown(full_response + "▌")
-            
+
             message_placeholder.markdown(full_response)
-            
-            # Show References in Accordion
+
+            # Show References
             if references:
                 with st.expander("📚 Sources & References"):
                     for ref in references:
-                       st.markdown(f"- **{ref['source']}** (Confidence: {ref['score']:.2f})")
-            
+                        st.markdown(f"- **{ref['source']}** (Confidence: {ref['score']:.2f})")
+
         except Exception as e:
             error_str = str(e)
             if "429" in error_str or "Quota exceeded" in error_str:
                 full_response = "⚠️ **System is down for maintenance.**\n\nPlease contact fypquranllm@gmail.com for details."
-                # Show error in UI
                 message_placeholder.error(full_response)
-                
-                # Auto-Send Email to Admin
                 email_subject = "🚨 CRITICAL: Gemini Quota Exceeded"
                 email_body = f"""
                 <h2>System Outage Alert</h2>
@@ -498,9 +642,7 @@ if prompt:
                 <p><b>User Email:</b> {st.session_state.get('user_email', 'Unknown')}</p>
                 <p><b>Time:</b> {datetime.utcnow()}</p>
                 """
-                # Send asynchronously/non-blocking if possible, but st blocks anyway
                 send_email("fypquranllm@gmail.com", email_subject, email_body)
-                
             else:
                 full_response = f"I encountered an error generating the response: {e}"
                 message_placeholder.error(full_response)
@@ -510,8 +652,8 @@ if prompt:
     msg_obj = {"role": "assistant", "content": full_response, "references": references}
     st.session_state.messages.append(msg_obj)
     
-    # 5. Save to DB (Assistant)
-    if not st.session_state.temp_mode:
+    # 5. Save to DB (Assistant) — skip for guests
+    if not IS_GUEST and not st.session_state.temp_mode:
         db_meta["chat_sessions"].update_one(
             {"_id": st.session_state.current_chat_id},
             {
@@ -527,9 +669,8 @@ if prompt:
         
         # 6. Auto-Rename 
         if len(st.session_state.messages) <= 2:
-            # Generate a short title
             try:
-                title_model = genai.GenerativeModel("gemini-2.5-flash") # Use a fast model
+                title_model = genai.GenerativeModel("gemini-2.5-flash")
                 title_resp = title_model.generate_content(
                     f"Generate a short, concise title (max 4-5 words) for this chat based on the first question: '{prompt}'. Do not use quotes."
                 )
@@ -539,6 +680,10 @@ if prompt:
                         {"_id": st.session_state.current_chat_id},
                         {"$set": {"title": new_title}}
                     )
-                    st.rerun() # Refresh sidebar
+                    st.rerun()
             except:
                 pass
+    
+    # --- SHOW SAVE NUDGE AFTER 3rd QUESTION (once only) ---
+    if IS_GUEST and st.session_state.guest_question_count == GUEST_QUESTION_LIMIT:
+        show_signup_prompt()
