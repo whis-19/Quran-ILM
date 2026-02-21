@@ -181,18 +181,18 @@ def vector_search(query, k=5):
 
 # --- 3. UI LAYOUT & SIDEBAR ---
 
-# Custom CSS — compact icon toolbar next to chat input
+# Custom CSS — icon toolbar inside chat input bar
 st.markdown("""
 <style>
-    /* ── AUDIO INPUT: compact mic icon ── */
+    /* ── AUDIO INPUT: mic icon matching send button style ── */
     div[data-testid="stAudioInput"] label { display: none; }
     div[data-testid="stAudioInput"] {
         position: fixed;
-        bottom: 13px;
-        left: calc(21rem + 52px);
+        bottom: 82.1px;
+        left: calc(21rem + 56px);
         z-index: 1001;
-        width: 34px;
-        height: 34px;
+        width: 36px;
+        height: 36px;
     }
     div[data-testid="stAudioInput"] > div {
         background-color: transparent !important;
@@ -208,69 +208,65 @@ st.markdown("""
     }
     div[data-testid="stAudioInput"] button {
         background-color: transparent !important;
-        border: none !important;
-        color: #9ca3af !important;
-        padding: 4px !important;
-        width: 34px !important;
-        height: 34px !important;
+        border: 1.5px solid rgba(150,150,150,0.3) !important;
+        color: #6b7280 !important;
+        padding: 0 !important;
+        width: 36px !important;
+        height: 36px !important;
+        border-radius: 50% !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        border-radius: 50% !important;
-        transition: color 0.2s, background 0.2s !important;
+        transition: border-color 0.2s, color 0.2s, background 0.2s !important;
     }
     div[data-testid="stAudioInput"] button:hover {
         color: #FF4B4B !important;
-        background-color: rgba(255,75,75,0.08) !important;
+        border-color: #FF4B4B !important;
+        background-color: rgba(255,75,75,0.07) !important;
     }
 
-    /* ── FILE UPLOADER: collapse to paperclip icon ── */
+    /* ── FILE UPLOADER: paperclip icon matching send button style ── */
     div[data-testid="stFileUploader"] {
         position: fixed;
-        bottom: 13px;
+        bottom: 82.1px;
         left: calc(21rem + 12px);
         z-index: 1001;
-        width: 34px !important;
-        height: 34px !important;
+        width: 36px !important;
+        height: 36px !important;
         overflow: visible;
     }
-    /* Hide the drag-drop section entirely */
     div[data-testid="stFileUploader"] section {
         display: none !important;
     }
-    /* Style the label as a paperclip icon */
     div[data-testid="stFileUploader"] > label {
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        width: 34px !important;
-        height: 34px !important;
+        width: 36px !important;
+        height: 36px !important;
         border-radius: 50% !important;
-        border: none !important;
+        border: 1.5px solid rgba(150,150,150,0.3) !important;
         background: transparent !important;
         cursor: pointer !important;
-        color: #9ca3af !important;
+        color: #6b7280 !important;
         font-size: 0 !important;
-        transition: color 0.2s, background 0.2s;
+        transition: border-color 0.2s, background 0.2s;
     }
     div[data-testid="stFileUploader"] > label::before {
         content: "📎";
-        font-size: 18px;
+        font-size: 17px;
     }
     div[data-testid="stFileUploader"] > label:hover {
-        color: #6366f1 !important;
-        background-color: rgba(99,102,241,0.08) !important;
+        border-color: #6366f1 !important;
+        background-color: rgba(99,102,241,0.07) !important;
     }
     div[data-testid="stFileUploader"] span[data-testid="stFileUploaderDeleteBtn"] {
         display: none !important;
     }
 
-    /* ── Push chat input text right to avoid overlap with icons ── */
+    /* ── Chat input: push placeholder text right to clear icons ── */
     div[data-testid="stChatInput"] textarea {
         padding-left: 90px !important;
-    }
-    div[data-testid="stChatInput"] > div {
-        padding-left: 0 !important;
     }
 </style>
 """, unsafe_allow_html=True)
