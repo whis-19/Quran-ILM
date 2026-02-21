@@ -189,7 +189,7 @@ st.markdown("""
     div[data-testid="stAudioInput"] {
         position: fixed;
         bottom: 13px;
-        left: 92px;
+        left: calc(21rem + 52px);
         z-index: 1001;
         width: 34px;
         height: 34px;
@@ -228,7 +228,7 @@ st.markdown("""
     div[data-testid="stFileUploader"] {
         position: fixed;
         bottom: 13px;
-        left: 52px;
+        left: calc(21rem + 12px);
         z-index: 1001;
         width: 34px !important;
         height: 34px !important;
@@ -238,7 +238,7 @@ st.markdown("""
     div[data-testid="stFileUploader"] section {
         display: none !important;
     }
-    /* Style the label ("Browse files" button) as a paperclip icon */
+    /* Style the label as a paperclip icon */
     div[data-testid="stFileUploader"] > label {
         display: flex !important;
         align-items: center !important;
@@ -250,7 +250,7 @@ st.markdown("""
         background: transparent !important;
         cursor: pointer !important;
         color: #9ca3af !important;
-        font-size: 0 !important;  /* hide any label text */
+        font-size: 0 !important;
         transition: color 0.2s, background 0.2s;
     }
     div[data-testid="stFileUploader"] > label::before {
@@ -261,9 +261,16 @@ st.markdown("""
         color: #6366f1 !important;
         background-color: rgba(99,102,241,0.08) !important;
     }
-    /* Small tooltip-style filename badge when file selected */
     div[data-testid="stFileUploader"] span[data-testid="stFileUploaderDeleteBtn"] {
         display: none !important;
+    }
+
+    /* ── Push chat input text right to avoid overlap with icons ── */
+    div[data-testid="stChatInput"] textarea {
+        padding-left: 90px !important;
+    }
+    div[data-testid="stChatInput"] > div {
+        padding-left: 0 !important;
     }
 </style>
 """, unsafe_allow_html=True)
