@@ -181,37 +181,89 @@ def vector_search(query, k=5):
 
 # --- 3. UI LAYOUT & SIDEBAR ---
 
-# Custom CSS (Voice Input + General Polish)
+# Custom CSS — compact icon toolbar next to chat input
 st.markdown("""
 <style>
-    /* Voice Input Positioning */
+    /* ── AUDIO INPUT: compact mic icon ── */
     div[data-testid="stAudioInput"] label { display: none; }
     div[data-testid="stAudioInput"] {
         position: fixed;
-        bottom: 82.1px; 
-        right: 120px;
+        bottom: 13px;
+        right: 52px;
         z-index: 1001;
-        width: 30px; 
-        height: 30px;
+        width: 34px;
+        height: 34px;
     }
     div[data-testid="stAudioInput"] > div {
         background-color: transparent !important;
         border: none !important;
         box-shadow: none !important;
         padding: 0 !important;
+        margin: 0 !important;
     }
-    div[data-testid="stAudioInput"] canvas, div[data-testid="stAudioInput"] audio, div[data-testid="stAudioInput"] div[data-testid="stMarkdownContainer"] {
+    div[data-testid="stAudioInput"] canvas,
+    div[data-testid="stAudioInput"] audio,
+    div[data-testid="stAudioInput"] div[data-testid="stMarkdownContainer"] {
         display: none !important;
     }
     div[data-testid="stAudioInput"] button {
         background-color: transparent !important;
         border: none !important;
-        color: inherit !important;
-        padding: 0 !important;
+        color: #9ca3af !important;
+        padding: 4px !important;
+        width: 34px !important;
+        height: 34px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 50% !important;
+        transition: color 0.2s, background 0.2s !important;
     }
     div[data-testid="stAudioInput"] button:hover {
-        transform: scale(1.1);
         color: #FF4B4B !important;
+        background-color: rgba(255,75,75,0.08) !important;
+    }
+
+    /* ── FILE UPLOADER: collapse to paperclip icon ── */
+    div[data-testid="stFileUploader"] {
+        position: fixed;
+        bottom: 13px;
+        right: 92px;
+        z-index: 1001;
+        width: 34px !important;
+        height: 34px !important;
+        overflow: visible;
+    }
+    /* Hide the drag-drop section entirely */
+    div[data-testid="stFileUploader"] section {
+        display: none !important;
+    }
+    /* Style the label ("Browse files" button) as a paperclip icon */
+    div[data-testid="stFileUploader"] > label {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 34px !important;
+        height: 34px !important;
+        border-radius: 50% !important;
+        border: none !important;
+        background: transparent !important;
+        cursor: pointer !important;
+        color: #9ca3af !important;
+        font-size: 0 !important;  /* hide any label text */
+        transition: color 0.2s, background 0.2s;
+    }
+    div[data-testid="stFileUploader"] > label::before {
+        content: "📎";
+        font-size: 18px;
+    }
+    div[data-testid="stFileUploader"] > label:hover {
+        color: #6366f1 !important;
+        background-color: rgba(99,102,241,0.08) !important;
+    }
+    /* Small tooltip-style filename badge when file selected */
+    div[data-testid="stFileUploader"] span[data-testid="stFileUploaderDeleteBtn"] {
+        display: none !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -437,14 +489,14 @@ for message in st.session_state.messages:
 
 # --- 4. CHAT LOGIC ---
 
-# File Attachment (authenticated users only)
+# File Attachment — compact icon (authenticated users only)
 uploaded_file = None
 if not IS_GUEST:
     uploaded_file = st.file_uploader(
-        "📎 Attach a file",
+        "",  # label hidden via CSS, icon shown via ::before
         type=["png", "jpg", "jpeg", "webp", "gif", "pdf", "txt", "docx"],
-        label_visibility="collapsed",
-        help="Attach an image or document — the AI will read and reference it in its answer.",
+        label_visibility="visible",
+        help="Attach an image or document — the AI will read it",
         key="chat_attachment"
     )
     if uploaded_file:
@@ -452,7 +504,8 @@ if not IS_GUEST:
         if ext in IMAGE_EXTS:
             st.image(uploaded_file, caption=f"📎 {uploaded_file.name}", use_container_width=False, width=260)
         else:
-            st.info(f"📎 **{uploaded_file.name}** attached — ask your question below.")
+            st.info(f"📎 **{uploaded_file.name}** ready — type your question below and press Enter.")
+
 
 # Voice Input Logic (Compact & Professional)
 audio_value = st.audio_input("Voice Input", label_visibility="collapsed")
