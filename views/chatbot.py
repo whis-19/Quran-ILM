@@ -189,7 +189,7 @@ st.markdown("""
     div[data-testid="stAudioInput"] {
         position: fixed;
         bottom: 13px;
-        right: 52px;
+        left: 92px;
         z-index: 1001;
         width: 34px;
         height: 34px;
@@ -228,7 +228,7 @@ st.markdown("""
     div[data-testid="stFileUploader"] {
         position: fixed;
         bottom: 13px;
-        right: 92px;
+        left: 52px;
         z-index: 1001;
         width: 34px !important;
         height: 34px !important;
