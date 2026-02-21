@@ -288,13 +288,13 @@ def show_signup_prompt():
             st.session_state.auth_mode = "signup"
             st.session_state.show_login_page = True
             st.session_state.show_signup_prompt = False
-            st.switch_page("Home.py")
+            st.rerun()
     with col2:
         if st.button("🔐 Sign In", use_container_width=True, key="dialog_signin"):
             st.session_state.auth_mode = "login"
             st.session_state.show_login_page = True
             st.session_state.show_signup_prompt = False
-            st.switch_page("Home.py")
+            st.rerun()
     
     st.write("")
     if st.button("Continue without account", use_container_width=True, key="dialog_dismiss"):
@@ -313,11 +313,11 @@ with st.sidebar:
         if st.button("🚀 Sign Up Free", type="primary", use_container_width=True, key="sidebar_signup"):
             st.session_state.auth_mode = "signup"
             st.session_state.show_login_page = True
-            st.switch_page("Home.py")
+            st.rerun()
         if st.button("🔐 Sign In", use_container_width=True, key="sidebar_signin"):
             st.session_state.auth_mode = "login"
             st.session_state.show_login_page = True
-            st.switch_page("Home.py")
+            st.rerun()
         # Show remaining questions counter
         remaining = max(0, GUEST_QUESTION_LIMIT - st.session_state.guest_question_count)
         st.write("---")
