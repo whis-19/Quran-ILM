@@ -51,6 +51,7 @@ with st.form("rag_config_form"):
             "LLM Model", 
             value=current_config.get("LLM_MODEL", "gemini-2.5-flash")
         )
+        embedding_model = st.text_input(
             "Embedding Model", 
             value=current_config.get("EMBEDDING_MODEL", "gemini-embedding-001")
         )
