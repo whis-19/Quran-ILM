@@ -1,6 +1,6 @@
 import streamlit as st
 from datetime import datetime
-from admin_utils import init_connection
+from utils.admin_utils import init_connection
 import uuid
 
 # st.set_page_config(page_title="Submit Feedback", page_icon="✍️")

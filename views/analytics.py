@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 # Load env
 # load_dotenv() - Handled by config
-import config
+from utils import config
 
 # --- CONFIG ---
 # st.set_page_config(page_title="Quran-ILM Analytics", layout="wide", page_icon="📊")

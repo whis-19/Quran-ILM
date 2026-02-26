@@ -1,7 +1,7 @@
 import streamlit as st
 import pymongo
 from gridfs import GridFS
-import config
+from . import config
 
 # --- Configuration ---
 GRIDFS_BUCKET_NAME = "original_files_bucket"

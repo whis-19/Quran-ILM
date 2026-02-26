@@ -18,7 +18,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 # Load environment variables
 # load_dotenv() - Handled by config
-import config
+from utils import config
 
 # --- 1. CONFIGURATION & DATABASE CONNECTION ---
 

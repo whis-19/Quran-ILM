@@ -4,10 +4,10 @@ import os
 import io
 import google.generativeai as genai
 from datetime import datetime
-import config
+from utils import config
 import time
 import uuid
-from auth_utils import send_email
+from utils.auth_utils import send_email
 
 # --- CONFIGURATION (Default Fallbacks) ---
 DEFAULT_RAG_DB = "Quran_RAG_Vectors"

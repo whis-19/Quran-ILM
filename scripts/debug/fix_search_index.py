@@ -1,6 +1,6 @@
 
 import pymongo
-import config
+from utils import config
 import sys
 import time
 

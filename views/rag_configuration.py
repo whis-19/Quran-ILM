@@ -3,8 +3,8 @@ import pymongo
 import os
 import sys
 import subprocess
-from admin_utils import init_connection
-import config
+from utils.admin_utils import init_connection
+from utils import config
 
 # st.set_page_config(page_title="RAG Configuration", page_icon="⚙️", layout="wide")
 
@@ -139,7 +139,7 @@ if start_indexing:
         
         # Use Popen to stream output
         process = subprocess.Popen(
-            [sys.executable, "rag_ingestion.py"],
+            [sys.executable, "scripts/ingestion/rag_ingestion.py"],
             env=current_env,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT, # Merge stderr into stdout

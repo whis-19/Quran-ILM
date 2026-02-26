@@ -1,6 +1,6 @@
 import streamlit as st
 import time
-from auth_utils import (
+from utils.auth_utils import (
     authenticate_user, 
     create_user_pending, 
     verify_user_otp, 
@@ -314,7 +314,7 @@ def login_page():
                     elif password != confirm:
                         st.error("Passwords do not match.")
                     else:
-                        from auth_utils import validate_password_strength
+                        from utils.auth_utils import validate_password_strength
                         is_valid, msg = validate_password_strength(password)
                         if not is_valid:
                             st.error(f"⚠️ Weak password: {msg}")
@@ -397,7 +397,7 @@ def login_page():
                     st.error("Passwords do not match.")
                 else:
                     # Validate Password Strength
-                    from auth_utils import validate_password_strength
+                    from utils.auth_utils import validate_password_strength
                     is_valid, msg = validate_password_strength(new_pass)
                     
                     if not is_valid:

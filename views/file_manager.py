@@ -2,12 +2,12 @@ import streamlit as st
 import time
 import pandas as pd
 from datetime import datetime
-from admin_utils import init_connection, normalize_path, delete_files
+from utils.admin_utils import init_connection, normalize_path, delete_files
 import os
 import pymongo
 import subprocess
 import sys
-import config
+from utils import config
 
 # st.set_page_config(page_title="File Manager", page_icon="📂", layout="wide")
 
@@ -240,7 +240,7 @@ else:
                         
                         # Use Popen to stream output
                         process = subprocess.Popen(
-                            [sys.executable, "rag_ingestion.py"],
+                            [sys.executable, "scripts/ingestion/rag_ingestion.py"],
                             env=current_env,
                             stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT, # Merge stderr into stdout

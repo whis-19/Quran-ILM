@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from gridfs import GridFS
 from tqdm import tqdm
-import config
+from utils import config
 
 # --- 1. CONFIGURATION ---
 

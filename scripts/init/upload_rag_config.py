@@ -1,6 +1,6 @@
 import pymongo
 import os
-import config
+from utils import config
 
 # --- Configuration ---
 MONGO_URI = config.MONGO_URI

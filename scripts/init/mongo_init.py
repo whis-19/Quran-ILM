@@ -2,7 +2,7 @@ import pymongo
 import os
 from pymongo.operations import SearchIndexModel
 from datetime import datetime, timezone
-import config
+from utils import config
 
 # --- 1. CONFIGURATION (READ FROM CONFIG) ---
 MONGO_URI = config.MONGO_URI

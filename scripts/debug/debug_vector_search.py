@@ -1,7 +1,7 @@
 
 import pymongo
 import os
-import config
+from utils import config
 import google.generativeai as genai
 import sys
 

@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-from admin_utils import init_connection
+from utils.admin_utils import init_connection
 
 # st.set_page_config(page_title="Feedback Review", page_icon="📝", layout="wide")
 

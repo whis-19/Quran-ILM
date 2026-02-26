@@ -13,8 +13,8 @@ import re
 from email.mime.text import MIMEText
 from datetime import datetime, timedelta
 import streamlit as st
-from admin_utils import init_connection
-import config
+from .admin_utils import init_connection
+from . import config
 
 # Connect to DB
 client, db, fs = init_connection()

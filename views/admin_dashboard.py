@@ -1,5 +1,5 @@
 import streamlit as st
-from admin_utils import init_connection
+from utils.admin_utils import init_connection
 
 # st.set_page_config(
 #     page_title="Quran-ILM Admin Panel",
