@@ -727,13 +727,14 @@ if prompt or (uploaded_file and not prompt):
 
         except Exception as e:
             error_str = str(e)
-            if "429" in error_str or "Quota exceeded" in error_str:
+            # Catch Quota (429) or API Key issues (400 / Expired)
+            if any(err in error_str for err in ["429", "Quota exceeded", "400", "API key expired", "API_KEY_INVALID"]):
                 full_response = "⚠️ **System is down for maintenance.**\n\nPlease contact fypquranllm@gmail.com for details."
                 message_placeholder.error(full_response)
-                email_subject = "🚨 CRITICAL: Gemini Quota Exceeded"
+                email_subject = "🚨 CRITICAL: Gemini API Failure"
                 email_body = f"""
                 <h2>System Outage Alert</h2>
-                <p>The Gemini API Quota has been exceeded, causing a service disruption.</p>
+                <p>A critical Gemini API error occurred causing a service disruption.</p>
                 <p><b>Error Details:</b></p>
                 <pre>{error_str}</pre>
                 <p><b>User Email:</b> {st.session_state.get('user_email', 'Unknown')}</p>
