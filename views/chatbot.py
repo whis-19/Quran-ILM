@@ -547,8 +547,12 @@ if audio_value:
             status.update(label="Voice Processed", state="complete", expanded=False)
 
 # Main Chat Input (Text)
-accept_exts = False if IS_GUEST else ["png", "jpg", "jpeg", "webp", "gif", "pdf", "txt", "docx"]
-text_input = st.chat_input("Ask a question about the Quran...", accept_file=accept_exts)
+accept_exts = None if IS_GUEST else ["png", "jpg", "jpeg", "webp", "gif", "pdf", "txt", "docx"]
+text_input = st.chat_input(
+    "Ask a question about the Quran...", 
+    accept_file=not IS_GUEST, 
+    file_type=accept_exts
+)
 
 uploaded_file = None
 
