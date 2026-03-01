@@ -192,8 +192,8 @@ st.markdown("""
     div[data-testid="stAudioInput"] label { display: none; }
     div[data-testid="stAudioInput"] {
         position: fixed;
-        bottom: 50px;
-        right: 110px; /* Aligned immediately to the left of the fast-send button */
+        bottom: 82px;
+        right: 70px; /* Aligned immediately to the left of the fast-send button */
         z-index: 1001;
         width: 36px;
         height: 36px;
@@ -232,73 +232,85 @@ st.markdown("""
     /* ── FILE UPLOADER (Paperclip): Placed inside left of Chat Input ── */
     div[data-testid="stFileUploader"] {
         position: fixed;
-        bottom: 50px;
-        left: 50%;
-        transform: translateX(calc(-50% - 310px)); /* Centered minus half chatbox width */
+        bottom: 82px;
+        left: calc(21rem + 25px); /* Safely anchored right past the sidebar */
         z-index: 1001;
         width: 36px !important;
         height: 36px !important;
         overflow: visible;
     }
-    /* Fallback override for smaller screens or sidebar open */
+    /* Fallback override for smaller screens or sidebar closed */
     @media (max-width: 1024px) {
         div[data-testid="stFileUploader"] {
-           left: calc(21rem + 20px);
-           transform: none;
+           left: 25px;
         }
     }
-    div[data-testid="stFileUploader"] section {
-        /* Do NOT display:none, or the input stops working */
-        padding: 0 !important;
-        background: transparent !important;
-    }
-    div[data-testid="stFileUploader"] section > input {
-        /* Make the actual file input stretch over the icon invisibly */
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        opacity: 0;
-        cursor: pointer;
-        z-index: 10;
-    }
-    div[data-testid="stFileUploader"] section > button {
-        display: none !important;
-    }
-    div[data-testid="stFileUploader"] section > div {
-        display: none !important;
-    }
+    
     div[data-testid="stFileUploader"] > label {
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
+        display: none !important;
+    }
+    
+    div[data-testid="stFileUploader"] section {
         width: 36px !important;
         height: 36px !important;
+        padding: 0 !important;
+        margin: 0 !important;
         border-radius: 50% !important;
         border: 1.5px solid rgba(150,150,150,0.3) !important;
-        background: transparent !important;
-        cursor: pointer !important;
-        color: #6b7280 !important;
-        font-size: 0 !important;
+        background-color: transparent !important;
+        display: block !important;
+        position: relative !important;
         transition: border-color 0.2s, background 0.2s;
+        cursor: pointer;
     }
-    div[data-testid="stFileUploader"] > label::before {
+    
+    div[data-testid="stFileUploader"] section::after {
         content: "📎";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
         font-size: 17px;
+        color: #6b7280;
+        pointer-events: none; 
     }
-    div[data-testid="stFileUploader"] > label:hover {
+    
+    div[data-testid="stFileUploader"] section:hover {
         border-color: #D4AF37 !important;
         background-color: rgba(212,175,55,0.07) !important;
     }
-    div[data-testid="stFileUploader"] span[data-testid="stFileUploaderDeleteBtn"] {
+    
+    div[data-testid="stFileUploader"] section:hover::after {
+        color: #D4AF37 !important;
+    }
+    
+    /* Make the actual file input cover the circle */
+    div[data-testid="stFileUploader"] section > input {
+        opacity: 0 !important;
+        position: absolute !important;
+        width: 100% !important;
+        height: 100% !important;
+        top: 0 !important;
+        left: 0 !important;
+        cursor: pointer !important;
+        z-index: 10 !important;
+        display: block !important;
+    }
+    
+    /* Hide the Browse Files button and texts */
+    div[data-testid="stFileUploader"] section > button,
+    div[data-testid="stFileUploader"] section > span,
+    div[data-testid="stFileUploader"] section > small,
+    div[data-testid="stFileUploader"] section > p,
+    div[data-testid="stFileUploader"] section > div {
         display: none !important;
+        opacity: 0 !important;
     }
 
     /* ── Chat input: push placeholder text right to clear the File icon ── */
     div[data-testid="stChatInput"] textarea {
-        padding-left: 60px !important;
-        padding-right: 60px !important;
+        padding-left: 55px !important;
+        padding-right: 55px !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -576,7 +588,6 @@ if not IS_GUEST:
         "",  # label hidden via CSS, icon shown via ::before
         type=["png", "jpg", "jpeg", "webp", "gif", "pdf", "txt", "docx"],
         label_visibility="visible",
-        help="Attach an image or document — the AI will read it",
         key="chat_attachment"
     )
     if uploaded_file:
