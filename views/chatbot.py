@@ -634,38 +634,38 @@ if prompt or (uploaded_file and not prompt):
             context_text += f"Source ({source} - {tafsir}):\n{text}\n\n"
             references.append({"source": source, "score": score})
 
-        # D. Generate Answer (multimodal-aware)
+        # D. Generate Answer (multimodal-aware & emotionally intelligent)
         system_instruction = """
-        You are a knowledgeable Islamic scholar assistant.
-        Answer the user's question using strictly the provided context.
-        If the answer is not in the context, state that you cannot find it in the provided sources,
-        but verify if it is a general Islamic concept you can explain with a disclaimer.
-        Always maintain a respectful and scholarly tone.
+        You are a highly intelligent, empathetic, and knowledgeable Islamic scholar assistant named Quran-ILM.
+        You have deep conversational memory. Understand the user's emotions, unstated intentions, and context from previous messages.
+        Answer their questions warmly and wisely, primarily drawing upon the provided Quran and Tafsir context. 
+        If the context does not contain the exact answer, use your scholarly knowledge to explain general Islamic concepts, but clearly state you are doing so without direct text evidence.
+        Act as an intelligent companion — ask clarifying questions if they seem confused, offer comfort if they seem distressed, and ensure your tone is always respectful, patient, and deeply rooted in Islamic wisdom.
         """
 
         try:
             model = genai.GenerativeModel(LLM_MODEL, system_instruction=system_instruction)
 
-            # E. Build Conversation History (Last 3 interactions / 6 messages)
-            # Exclude the very last message since it's the current prompt we just appended
-            history_msgs = st.session_state.messages[:-1][-6:]
-            history_text = ""
-            if history_msgs:
-                history_text = "Conversation History (for context):\n"
-                for msg in history_msgs:
-                    role_name = "User" if msg["role"] == "user" else "Assistant"
-                    # truncate very long text to save tokens
-                    content_str = msg["content"]
-                    if len(content_str) > 800: 
-                        content_str = content_str[:800] + "... [truncated]"
-                    history_text += f"{role_name}: {content_str}\n"
-                history_text += "\n"
+            # E. Build Native Chat History
+            # Convert st.session_state.messages (up to the current one) into Gemini format
+            gemini_history = []
+            # We skip the very last message in session_state because that's the *current* prompt we will send.
+            for msg in st.session_state.messages[:-1]:
+                # Gemini expects role to be "user" or "model"
+                role = "user" if msg["role"] == "user" else "model"
+                gemini_history.append({
+                    "role": role,
+                    "parts": [msg["content"]]
+                })
+            
+            # Start native chat session with the full previous history
+            chat_session = model.start_chat(history=gemini_history)
 
-            # Base text prompt
+            # Build the current prompt payload (Context + Prompt)
+            # The context is invisibly passed to the model alongside the user's text for this turn only.
             base_prompt = (
-                f"{history_text}"
-                f"Context from Quran/Tafsir sources:\n{context_text}\n\n"
-                f"Current Question: {prompt}\n\nAnswer:"
+                f"--- [SYSTEM CONTEXT FROM RAG SEARCH] ---\n{context_text}\n--- [END CONTEXT] ---\n\n"
+                f"User's Current Query: {prompt}"
             )
 
             # Build parts list: text first, then optional file
@@ -674,20 +674,19 @@ if prompt or (uploaded_file and not prompt):
             if file_content is not None:
                 if file_is_image:
                     # Append raw image bytes inline
-                    parts[0] += "\n\n[An image has been attached. Please analyse it in relation to the question above.]"
+                    parts[0] += "\n\n[An image has been attached by the user. Please analyze it in relation to their query.]"
                     parts.append({"mime_type": file_mime, "data": file_content})
                 else:
                     # Inject extracted document text into the prompt
                     parts = [(
-                        f"{history_text}"
-                        f"Context from Quran/Tafsir sources:\n{context_text}\n\n"
-                        f"--- ATTACHED DOCUMENT ({uploaded_file.name}) ---\n{file_content}\n"
-                        f"--- END OF DOCUMENT ---\n\n"
-                        f"Current Question: {prompt}\n\nAnswer:"
+                        f"--- [SYSTEM CONTEXT FROM RAG SEARCH] ---\n{context_text}\n--- [END CONTEXT] ---\n\n"
+                        f"--- [ATTACHED DOCUMENT ({uploaded_file.name})] ---\n{file_content}\n"
+                        f"--- [END DOCUMENT] ---\n\n"
+                        f"User's Current Query: {prompt}"
                     )]
 
-            # Stream response
-            response = model.generate_content(parts, stream=True)
+            # Stream response via the chat session to keep history intact natively
+            response = chat_session.send_message(parts, stream=True)
             for chunk in response:
                 if chunk.text:
                     full_response += chunk.text
