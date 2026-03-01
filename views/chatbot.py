@@ -330,9 +330,7 @@ IS_GUEST = not st.session_state.get("authenticated", False)
 # --- SAVE NUDGE DIALOG (ChatGPT-style) ---
 @st.dialog("💾 Save Your Conversations")
 def show_signup_prompt():
-    colA, colB, colC = st.columns([1, 1, 1])
-    with colB:
-        st.image("quran_ilm.png", use_container_width=True)
+    st.image("quran_ilm.png", width=100)
     st.markdown("""
     <div style="text-align:center; padding: 10px 0;">
         <h3 style="margin:0; color:#1f2937;">Don't lose your insights</h3>
@@ -366,9 +364,11 @@ def show_signup_prompt():
 
 # --- SIDEBAR ---
 with st.sidebar:
+    st.logo("quran_ilm.png") # Adds a global logo to the top left above navigation 
+
     if IS_GUEST:
         # Guest: minimal sidebar — just sign in/up options
-        st.markdown("### Quran-ILM")
+        st.image("quran_ilm.png", width=180)
         st.markdown("<p style='color:#6b7280; font-size:0.85rem;'>Ask questions about the Quran and Tafsir.</p>", unsafe_allow_html=True)
         st.write("---")
         if st.button("🚀 Sign Up Free", type="primary", use_container_width=True, key="sidebar_signup"):
@@ -476,7 +476,12 @@ with st.sidebar:
 
 # --- MAIN PAGE ---
 
-st.title("🤖 Quran-ILM AI Assistant")
+# Center logo like ChatGPT
+col1, col2, col3 = st.columns([1, 1, 1])
+with col2:
+    st.image("quran_ilm.png", use_container_width=True)
+
+st.markdown("<h3 style='text-align: center; margin-bottom: 2rem; color: #4b5563;'>How can I help you today?</h3>", unsafe_allow_html=True)
 if st.session_state.temp_mode:
     st.caption("🕵️ **Temporary Mode Active**: Chat will not be saved.")
 else:

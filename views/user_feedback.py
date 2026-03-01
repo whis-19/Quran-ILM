@@ -10,7 +10,7 @@ if not st.session_state.get("authenticated"):
     st.switch_page("Home.py")
     st.stop()
 
-st.title("✍️ Submit Feedback")
+st.title("Submit Feedback")
 st.markdown("We value your feedback! Please let us know how we can improve your experience.")
 
 # Connect to DB

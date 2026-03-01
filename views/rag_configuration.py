@@ -17,7 +17,7 @@ if st.session_state.role != "admin":
     st.stop()
 # ------------------
 
-st.title("⚙️ RAG Configuration & Indexing")
+st.title("RAG Configuration & Indexing")
 st.markdown("Configure the parameters for the RAG ingestion pipeline. Settings are **saved to MongoDB**.")
 
 # Connect

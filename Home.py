@@ -2,7 +2,6 @@ import streamlit as st
 
 # --- MAIN CONFIG ---
 st.set_page_config(page_title="Quran-ILM", page_icon="quran_ilm.png", layout="wide")
-st.logo("quran_ilm.png")
 
 # --- AUTH CHECK ---
 if "authenticated" not in st.session_state:
@@ -81,6 +80,7 @@ else:
     
     # Logout Logic in Sidebar
     with st.sidebar:
+        st.logo("quran_ilm.png")
         st.write(f"Logged in as **{st.session_state.role.upper()}**")
         
         if st.button("🚪 Log Out"):

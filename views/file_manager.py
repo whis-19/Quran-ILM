@@ -20,7 +20,7 @@ if st.session_state.role != "admin":
     st.stop()
 # ------------------
 
-st.title("📂 File Manager")
+st.title("File Manager")
 
 # Connect
 client, db, fs = init_connection()

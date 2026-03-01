@@ -14,7 +14,7 @@ if st.session_state.role != "admin":
     st.stop()
 # ------------------
 
-st.title("📝 User Feedback Review")
+st.title("User Feedback Review")
 
 # Connect
 client, db, fs = init_connection()

@@ -19,7 +19,12 @@ if st.session_state.role != "admin":
     st.stop()
 # ------------------
 
-st.title("🗄️ Quran-ILM Admin Panel")
+# Center logo like ChatGPT main page
+col1, col2, col3 = st.columns([1, 1, 1])
+with col2:
+    st.image("quran_ilm.png", use_container_width=True)
+
+st.markdown("<h3 style='text-align: center; margin-bottom: 2rem; color: #4b5563;'>Admin Panel</h3>", unsafe_allow_html=True)
 
 client, db, fs = init_connection()
 

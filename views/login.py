@@ -184,10 +184,7 @@ def login_page():
 
     with col2:
         # --- HEADER ---
-        colA, colB, colC = st.columns([1, 2, 1])
-        with colB:
-            st.image("quran_ilm.png", use_container_width=True)
-        st.markdown("<h1 style='text-align: center;'>Quran-ILM</h1>", unsafe_allow_html=True)
+        st.markdown("<h1>☪️ Quran-ILM</h1>", unsafe_allow_html=True)
         
         # --- LOGIN VIEW ---
         if st.session_state.auth_mode == "login":

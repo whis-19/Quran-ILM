@@ -47,7 +47,7 @@ if not client_meta:
     st.error("❌ Database connection failed. Check .env file.")
     st.stop()
 
-st.title("📊 System Analytics Dashboard")
+st.title("System Analytics Dashboard")
 
 # --- TAB 1: DATABASE STATS ---
 st.header("1. Database Storage & Collections")
