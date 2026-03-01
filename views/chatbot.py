@@ -513,21 +513,31 @@ for i, message in enumerate(st.session_state.messages):
 
         # Optional Speaker Icon for TTS on AI Responses
         if message["role"] == "assistant":
-            if "audio_bytes" in message:
-                st.audio(message["audio_bytes"], format="audio/mp3")
-            else:
-                if st.button("🔊 Listen", key=f"tts_btn_{i}"):
-                    with st.spinner("Generating audio..."):
-                        try:
-                            from gtts import gTTS
-                            import io
-                            tts = gTTS(text=message["content"], lang='en')
-                            fp = io.BytesIO()
-                            tts.write_to_fp(fp)
-                            message["audio_bytes"] = fp.getvalue()
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Failed to generate audio: {e}")
+            # Container to align right
+            col1, col2 = st.columns([0.95, 0.05])
+            with col2:
+                if st.button("🔊", key=f"tts_btn_{i}", type="tertiary", help="Listen to this response"):
+                    if "audio_bytes" not in message:
+                        with st.spinner("..."):
+                            try:
+                                from gtts import gTTS
+                                import io
+                                tts = gTTS(text=message["content"], lang='en')
+                                fp = io.BytesIO()
+                                tts.write_to_fp(fp)
+                                message["audio_bytes"] = fp.getvalue()
+                            except Exception as e:
+                                st.error(f"Failed to generate audio: {e}")
+                    
+                    if "audio_bytes" in message:
+                        import base64
+                        b64 = base64.b64encode(message["audio_bytes"]).decode()
+                        md = f"""
+                            <audio autoplay="true" style="display:none;">
+                            <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
+                            </audio>
+                            """
+                        st.markdown(md, unsafe_allow_html=True)
 
 # --- 4. CHAT LOGIC ---
 
