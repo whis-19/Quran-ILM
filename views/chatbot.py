@@ -492,7 +492,7 @@ if not st.session_state.current_chat_id:
     create_new_chat()
 
 # Display Messages
-for message in st.session_state.messages:
+for i, message in enumerate(st.session_state.messages):
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
         if message.get("references"):
@@ -500,6 +500,24 @@ for message in st.session_state.messages:
                 # Simplified Ref View
                 for ref in message["references"]:
                     st.markdown(f"- {ref.get('source', 'Unknown')} (Score: {ref.get('score', 0):.2f})")
+        
+        # Optional Speaker Icon for TTS on AI Responses
+        if message["role"] == "model":
+            if "audio_bytes" in message:
+                st.audio(message["audio_bytes"], format="audio/mp3")
+            else:
+                if st.button("🔊 Listen", key=f"tts_btn_{i}"):
+                    with st.spinner("Generating audio..."):
+                        try:
+                            from gtts import gTTS
+                            import io
+                            tts = gTTS(text=message["content"], lang='en')
+                            fp = io.BytesIO()
+                            tts.write_to_fp(fp)
+                            message["audio_bytes"] = fp.getvalue()
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Failed to generate audio: {e}")
 
 # --- 4. CHAT LOGIC ---
 
@@ -831,3 +849,6 @@ if prompt or (uploaded_file and not prompt):
     # --- SHOW SAVE NUDGE AFTER 3rd QUESTION (once only) ---
     if IS_GUEST and st.session_state.guest_question_count == GUEST_QUESTION_LIMIT:
         show_signup_prompt()
+    
+    # Rerun to cleanly transition the streamed message into the standard history loop
+    st.rerun()
