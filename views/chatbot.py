@@ -193,7 +193,7 @@ st.markdown("""
     div[data-testid="stAudioInput"] {
         position: fixed;
         bottom: 82px;
-        right: 80px; /* Snugly aligned to the left of the fast-send button */
+        right: 110px; /* Snugly aligned to the left of the fast-send button */
         z-index: 1001;
         width: 36px;
         height: 36px;
