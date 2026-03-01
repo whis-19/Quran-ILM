@@ -224,9 +224,9 @@ st.markdown("""
         transition: border-color 0.2s, color 0.2s, background 0.2s !important;
     }
     div[data-testid="stAudioInput"] button:hover {
-        color: #FF4B4B !important;
-        border-color: #FF4B4B !important;
-        background-color: rgba(255,75,75,0.07) !important;
+        color: #D4AF37 !important;
+        border-color: #D4AF37 !important;
+        background-color: rgba(212,175,55,0.07) !important;
     }
 
     /* ── FILE UPLOADER: paperclip icon matching send button style ── */
@@ -261,8 +261,8 @@ st.markdown("""
         font-size: 17px;
     }
     div[data-testid="stFileUploader"] > label:hover {
-        border-color: #6366f1 !important;
-        background-color: rgba(99,102,241,0.07) !important;
+        border-color: #D4AF37 !important;
+        background-color: rgba(212,175,55,0.07) !important;
     }
     div[data-testid="stFileUploader"] span[data-testid="stFileUploaderDeleteBtn"] {
         display: none !important;
