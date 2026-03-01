@@ -193,7 +193,7 @@ st.markdown("""
     div[data-testid="stAudioInput"] {
         position: fixed;
         bottom: 82px;
-        right: 70px; /* Aligned immediately to the left of the fast-send button */
+        right: 50px; /* Snugly aligned to the left of the fast-send button */
         z-index: 1001;
         width: 36px;
         height: 36px;
@@ -229,88 +229,9 @@ st.markdown("""
         background-color: rgba(212,175,55,0.07) !important;
     }
 
-    /* ── FILE UPLOADER (Paperclip): Placed inside left of Chat Input ── */
-    div[data-testid="stFileUploader"] {
-        position: fixed;
-        bottom: 82px;
-        left: calc(21rem + 25px); /* Safely anchored right past the sidebar */
-        z-index: 1001;
-        width: 36px !important;
-        height: 36px !important;
-        overflow: visible;
-    }
-    /* Fallback override for smaller screens or sidebar closed */
-    @media (max-width: 1024px) {
-        div[data-testid="stFileUploader"] {
-           left: 25px;
-        }
-    }
-    
-    div[data-testid="stFileUploader"] > label {
-        display: none !important;
-    }
-    
-    div[data-testid="stFileUploader"] section {
-        width: 36px !important;
-        height: 36px !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        border-radius: 50% !important;
-        border: 1.5px solid rgba(150,150,150,0.3) !important;
-        background-color: transparent !important;
-        display: block !important;
-        position: relative !important;
-        transition: border-color 0.2s, background 0.2s;
-        cursor: pointer;
-    }
-    
-    div[data-testid="stFileUploader"] section::after {
-        content: "📎";
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        font-size: 17px;
-        color: #6b7280;
-        pointer-events: none; 
-    }
-    
-    div[data-testid="stFileUploader"] section:hover {
-        border-color: #D4AF37 !important;
-        background-color: rgba(212,175,55,0.07) !important;
-    }
-    
-    div[data-testid="stFileUploader"] section:hover::after {
-        color: #D4AF37 !important;
-    }
-    
-    /* Make the actual file input cover the circle */
-    div[data-testid="stFileUploader"] section > input {
-        opacity: 0 !important;
-        position: absolute !important;
-        width: 100% !important;
-        height: 100% !important;
-        top: 0 !important;
-        left: 0 !important;
-        cursor: pointer !important;
-        z-index: 10 !important;
-        display: block !important;
-    }
-    
-    /* Hide the Browse Files button and texts */
-    div[data-testid="stFileUploader"] section > button,
-    div[data-testid="stFileUploader"] section > span,
-    div[data-testid="stFileUploader"] section > small,
-    div[data-testid="stFileUploader"] section > p,
-    div[data-testid="stFileUploader"] section > div {
-        display: none !important;
-        opacity: 0 !important;
-    }
-
-    /* ── Chat input: push placeholder text right to clear the File icon ── */
+    /* ── Chat input: push placeholder text right to clear the Mic & Native Attachment icons ── */
     div[data-testid="stChatInput"] textarea {
-        padding-left: 55px !important;
-        padding-right: 55px !important;
+        padding-right: 90px !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -581,22 +502,6 @@ for i, message in enumerate(st.session_state.messages):
 
 # --- 4. CHAT LOGIC ---
 
-# File Attachment — compact icon (authenticated users only)
-uploaded_file = None
-if not IS_GUEST:
-    uploaded_file = st.file_uploader(
-        "",  # label hidden via CSS, icon shown via ::before
-        type=["png", "jpg", "jpeg", "webp", "gif", "pdf", "txt", "docx"],
-        label_visibility="visible",
-        key="chat_attachment"
-    )
-    if uploaded_file:
-        ext = uploaded_file.name.rsplit(".", 1)[-1].lower()
-        if ext in IMAGE_EXTS:
-            st.image(uploaded_file, caption=f"📎 {uploaded_file.name}", use_container_width=False, width=260)
-        else:
-            st.info(f"📎 **{uploaded_file.name}** ready — type your question below and press Enter.")
-
 
 # Voice Input Logic (Compact & Professional)
 audio_value = st.audio_input("Voice Input", label_visibility="collapsed")
@@ -642,19 +547,29 @@ if audio_value:
             status.update(label="Voice Processed", state="complete", expanded=False)
 
 # Main Chat Input (Text)
-text_input = st.chat_input("Ask a question about the Quran...")
+accept_exts = False if IS_GUEST else ["png", "jpg", "jpeg", "webp", "gif", "pdf", "txt", "docx"]
+text_input = st.chat_input("Ask a question about the Quran...", accept_file=accept_exts)
+
+uploaded_file = None
 
 # Determine final prompt source
 if text_input:
-    prompt = text_input
+    # Handle new Streamlit 1.40+ dictionary return for accept_file
+    if isinstance(text_input, dict) or hasattr(text_input, "keys"):
+        prompt = text_input.get("text", "")
+        files = text_input.get("files", [])
+        if files:
+            uploaded_file = files[0]
+            
+        # Default text if they attached a file but sent without typing any prompt
+        if not prompt and uploaded_file:
+            prompt = "Please analyse this file and answer any Quran or Islamic questions related to it. Describe its content."
+    else:
+        prompt = text_input
 elif audio_prompt:
     prompt = audio_prompt
 
-if prompt or (uploaded_file and not prompt):
-    # Default prompt when only a file is attached
-    if not prompt and uploaded_file:
-        prompt = "Please analyse this file and answer any Quran or Islamic questions related to it. Describe its content."
-
+if prompt:
     # Build display label for attachment
     attachment_label = f" \n\n📎 *{uploaded_file.name}*" if uploaded_file else ""
 
