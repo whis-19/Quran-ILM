@@ -34,9 +34,13 @@ def init_resources():
         st.warning(f"Could not load config from DB: {e}")
         config_doc = {}
         
-    # Helper to resolve Config Priority: Env > DB > Default
+    # Helper to resolve Config Priority: DB > Env > Default
     def get_conf(key, default):
-        return config.get_env(key) or config_doc.get(key) or default
+        # Prefer MongoDB config if it exists and is not empty string, otherwise fallback to Env/Secret/Default
+        db_val = config_doc.get(key)
+        if db_val and str(db_val).strip():
+            return db_val
+        return config.get_env(key, default)
 
     google_api_key = get_conf("GOOGLE_API_KEY", "")
     llm_model_name = get_conf("LLM_MODEL", "gemini-2.5-flash")
@@ -612,10 +616,11 @@ if prompt or (uploaded_file and not prompt):
             
             check_prompt = f"Is the following user prompt asking about Islam, the Quran, religion, a specific story, or requesting scholarly advice? Reply YES or NO.\nPrompt: '{user_prompt}'"
             try:
+                genai.configure(api_key=google_api_key)  # Force refresh to absolute newest key from Mongo/Env resolution
                 checker = genai.GenerativeModel("gemini-2.5-flash") # Use fast model
                 res = checker.generate_content(check_prompt).text.strip().upper()
                 return "YES" in res
-            except:
+            except Exception as e:
                 return True # Default to RAG on failure
                 
         needs_rag = True
