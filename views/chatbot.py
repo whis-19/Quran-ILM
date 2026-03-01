@@ -496,13 +496,23 @@ for i, message in enumerate(st.session_state.messages):
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
         if message.get("references"):
-             with st.expander("📚 References"):
-                # Simplified Ref View
-                for ref in message["references"]:
-                    st.markdown(f"- {ref.get('source', 'Unknown')} (Score: {ref.get('score', 0):.2f})")
-        
+             with st.expander("📚 References", expanded=False):
+                for idx, ref in enumerate(message["references"], 1):
+                    source = ref.get('source', 'Unknown')
+                    score = ref.get('score', 0)
+                    st.markdown(f"**[{idx}] {source}** (Confidence: {score:.2f})")
+                    
+                    if 'tafsir' in ref:
+                        st.markdown(f"- **Tafsir/Book:** {ref['tafsir']}")
+                        if ref['surah'] != 'N/A':
+                            st.markdown(f"- **Surah:** {ref['surah']}")
+                        if ref['page'] != 'N/A':
+                            st.markdown(f"- **Page:** {ref['page']}")
+                        st.caption(f"*\"{ref['snippet']}\"*")
+                        st.divider()
+
         # Optional Speaker Icon for TTS on AI Responses
-        if message["role"] == "model":
+        if message["role"] == "assistant":
             if "audio_bytes" in message:
                 st.audio(message["audio_bytes"], format="audio/mp3")
             else:
