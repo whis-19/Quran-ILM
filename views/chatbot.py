@@ -646,10 +646,26 @@ if prompt or (uploaded_file and not prompt):
         try:
             model = genai.GenerativeModel(LLM_MODEL, system_instruction=system_instruction)
 
+            # E. Build Conversation History (Last 3 interactions / 6 messages)
+            # Exclude the very last message since it's the current prompt we just appended
+            history_msgs = st.session_state.messages[:-1][-6:]
+            history_text = ""
+            if history_msgs:
+                history_text = "Conversation History (for context):\n"
+                for msg in history_msgs:
+                    role_name = "User" if msg["role"] == "user" else "Assistant"
+                    # truncate very long text to save tokens
+                    content_str = msg["content"]
+                    if len(content_str) > 800: 
+                        content_str = content_str[:800] + "... [truncated]"
+                    history_text += f"{role_name}: {content_str}\n"
+                history_text += "\n"
+
             # Base text prompt
             base_prompt = (
+                f"{history_text}"
                 f"Context from Quran/Tafsir sources:\n{context_text}\n\n"
-                f"Question: {prompt}\n\nAnswer:"
+                f"Current Question: {prompt}\n\nAnswer:"
             )
 
             # Build parts list: text first, then optional file
@@ -663,10 +679,11 @@ if prompt or (uploaded_file and not prompt):
                 else:
                     # Inject extracted document text into the prompt
                     parts = [(
+                        f"{history_text}"
                         f"Context from Quran/Tafsir sources:\n{context_text}\n\n"
                         f"--- ATTACHED DOCUMENT ({uploaded_file.name}) ---\n{file_content}\n"
                         f"--- END OF DOCUMENT ---\n\n"
-                        f"Question: {prompt}\n\nAnswer:"
+                        f"Current Question: {prompt}\n\nAnswer:"
                     )]
 
             # Stream response
