@@ -1,7 +1,8 @@
 import streamlit as st
 
 # --- MAIN CONFIG ---
-st.set_page_config(page_title="Quran-ILM", page_icon="☪️", layout="wide")
+st.set_page_config(page_title="Quran-ILM", page_icon="quran_ilm.png", layout="wide")
+st.logo("quran_ilm.png")
 
 # --- AUTH CHECK ---
 if "authenticated" not in st.session_state:

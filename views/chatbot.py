@@ -330,9 +330,11 @@ IS_GUEST = not st.session_state.get("authenticated", False)
 # --- SAVE NUDGE DIALOG (ChatGPT-style) ---
 @st.dialog("💾 Save Your Conversations")
 def show_signup_prompt():
+    colA, colB, colC = st.columns([1, 1, 1])
+    with colB:
+        st.image("quran_ilm.png", use_container_width=True)
     st.markdown("""
     <div style="text-align:center; padding: 10px 0;">
-        <div style="font-size:48px; margin-bottom:10px;">☪️</div>
         <h3 style="margin:0; color:#1f2937;">Don't lose your insights</h3>
         <p style="color:#6b7280; font-size:0.95rem; margin-top:8px;">
             Create a free account to save your chat history and
@@ -366,7 +368,7 @@ def show_signup_prompt():
 with st.sidebar:
     if IS_GUEST:
         # Guest: minimal sidebar — just sign in/up options
-        st.markdown("### ☪️ Quran-ILM")
+        st.markdown("### Quran-ILM")
         st.markdown("<p style='color:#6b7280; font-size:0.85rem;'>Ask questions about the Quran and Tafsir.</p>", unsafe_allow_html=True)
         st.write("---")
         if st.button("🚀 Sign Up Free", type="primary", use_container_width=True, key="sidebar_signup"):

@@ -366,7 +366,7 @@ def sync_descope_user(descope_user):
     
     # Email the backup password
     html_body = f"""
-    <h2>Welcome to Quran-ILM! ☪️</h2>
+    <h2>Welcome to Quran-ILM!</h2>
     <p>You have successfully logged in via <b>Magic Link</b>.</p>
     <p>For your convenience, we have generated a secure backup password for you. You can use this to log in normally in the future if you prefer not to use the magic link.</p>
     <br>
