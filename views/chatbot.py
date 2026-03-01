@@ -605,16 +605,37 @@ if prompt or (uploaded_file and not prompt):
         message_placeholder = st.empty()
         full_response = ""
 
-        # A. Vector Search (RAG)
-        with st.status("🔍 Searching Quran & Tafsir...", expanded=False) as status:
-            context_results = vector_search(prompt, k=TOP_K)
-            if context_results:
-                status.write("✅ Found relevant verses.")
-            else:
-                status.write("⚠️ No direct matches found. Using general knowledge.")
-            status.update(label="Search Complete", state="complete", expanded=False)
+        # A. Intent Classification (Zero-shot check to save time & prevent hallucination)
+        def requires_rag_search(user_prompt):
+            if len(user_prompt.split()) < 3 and user_prompt.lower() in ["hi", "hello", "salam", "assalamualaikum", "thanks", "ok"]:
+                return False
+            
+            check_prompt = f"Is the following user prompt asking about Islam, the Quran, religion, a specific story, or requesting scholarly advice? Reply YES or NO.\nPrompt: '{user_prompt}'"
+            try:
+                checker = genai.GenerativeModel("gemini-2.5-flash") # Use fast model
+                res = checker.generate_content(check_prompt).text.strip().upper()
+                return "YES" in res
+            except:
+                return True # Default to RAG on failure
+                
+        needs_rag = True
+        if not uploaded_file: # Always RAG if document is attached for safety
+            needs_rag = requires_rag_search(prompt)
 
-        # B. Extract attachment content
+        # B. Vector Search (RAG)
+        context_results = []
+        with st.status("🔍 Searching Quran & Tafsir..." if needs_rag else "💭 Thinking...", expanded=False) as status:
+            if needs_rag:
+                context_results = vector_search(prompt, k=TOP_K)
+                if context_results:
+                    status.write("✅ Found relevant verses.")
+                else:
+                    status.write("⚠️ No direct matches found. Using scholarly knowledge.")
+            else:
+                status.write("💬 Conversational query. Skipping database search.")
+            status.update(label="Complete", state="complete", expanded=False)
+
+        # C. Extract attachment content
         file_content = None
         file_is_image = False
         file_mime = None
@@ -638,8 +659,12 @@ if prompt or (uploaded_file and not prompt):
         system_instruction = """
         You are a highly intelligent, empathetic, and knowledgeable Islamic scholar assistant named Quran-ILM.
         You have deep conversational memory. Understand the user's emotions, unstated intentions, and context from previous messages.
-        Answer their questions warmly and wisely, primarily drawing upon the provided Quran and Tafsir context. 
-        If the context does not contain the exact answer, use your scholarly knowledge to explain general Islamic concepts, but clearly state you are doing so without direct text evidence.
+        
+        CRITICAL RULES FOR USING CONTEXT:
+        1. For questions about Islam, the Quran, or Tafsir: You MUST base your answer primarily on the provided [SYSTEM CONTEXT FROM RAG SEARCH].
+        2. IF the provided context is completely irrelevant to the user's question (e.g. they ask about a mango shake, but the context talks about fasting), DO NOT try to force a connection. Treat it as a general conversation.
+        3. For general greetings, conversational follow-ups, or off-topic questions (e.g., recipes, weather), respond naturally and politely as a scholar would, WITHOUT referencing the context blocks. You can politely steer them back to Islamic topics if they stray too far.
+        
         Act as an intelligent companion — ask clarifying questions if they seem confused, offer comfort if they seem distressed, and ensure your tone is always respectful, patient, and deeply rooted in Islamic wisdom.
         """
 
