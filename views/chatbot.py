@@ -188,12 +188,12 @@ def vector_search(query, k=5):
 # Custom CSS — icon toolbar inside chat input bar
 st.markdown("""
 <style>
-    /* ── AUDIO INPUT: mic icon matching send button style ── */
+    /* ── AUDIO INPUT (Microphone): Placed inside right of Chat Input ── */
     div[data-testid="stAudioInput"] label { display: none; }
     div[data-testid="stAudioInput"] {
         position: fixed;
-        bottom: 82.1px;
-        left: calc(21rem + 56px);
+        bottom: 50px;
+        right: 110px; /* Aligned immediately to the left of the fast-send button */
         z-index: 1001;
         width: 36px;
         height: 36px;
@@ -229,17 +229,44 @@ st.markdown("""
         background-color: rgba(212,175,55,0.07) !important;
     }
 
-    /* ── FILE UPLOADER: paperclip icon matching send button style ── */
+    /* ── FILE UPLOADER (Paperclip): Placed inside left of Chat Input ── */
     div[data-testid="stFileUploader"] {
         position: fixed;
-        bottom: 82.1px;
-        left: calc(21rem + 12px);
+        bottom: 50px;
+        left: 50%;
+        transform: translateX(calc(-50% - 310px)); /* Centered minus half chatbox width */
         z-index: 1001;
         width: 36px !important;
         height: 36px !important;
         overflow: visible;
     }
+    /* Fallback override for smaller screens or sidebar open */
+    @media (max-width: 1024px) {
+        div[data-testid="stFileUploader"] {
+           left: calc(21rem + 20px);
+           transform: none;
+        }
+    }
     div[data-testid="stFileUploader"] section {
+        /* Do NOT display:none, or the input stops working */
+        padding: 0 !important;
+        background: transparent !important;
+    }
+    div[data-testid="stFileUploader"] section > input {
+        /* Make the actual file input stretch over the icon invisibly */
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+        z-index: 10;
+    }
+    div[data-testid="stFileUploader"] section > button {
+        display: none !important;
+    }
+    div[data-testid="stFileUploader"] section > div {
         display: none !important;
     }
     div[data-testid="stFileUploader"] > label {
@@ -268,9 +295,10 @@ st.markdown("""
         display: none !important;
     }
 
-    /* ── Chat input: push placeholder text right to clear icons ── */
+    /* ── Chat input: push placeholder text right to clear the File icon ── */
     div[data-testid="stChatInput"] textarea {
-        padding-left: 90px !important;
+        padding-left: 60px !important;
+        padding-right: 60px !important;
     }
 </style>
 """, unsafe_allow_html=True)
