@@ -610,14 +610,28 @@ if prompt or (uploaded_file and not prompt):
         full_response = ""
 
         # A. Intent Classification (Zero-shot check to save time & prevent hallucination)
-        def requires_rag_search(user_prompt):
+        def requires_rag_search(user_prompt, history):
             if len(user_prompt.split()) < 3 and user_prompt.lower() in ["hi", "hello", "salam", "assalamualaikum", "thanks", "ok"]:
                 return False
             
-            check_prompt = f"Is the following user prompt asking about Islam, the Quran, religion, a specific story, or requesting scholarly advice? Reply YES or NO.\nPrompt: '{user_prompt}'"
+            # Build short history string for the classifier
+            hist_str = ""
+            if history:
+                hist_str = "Recent Conversation Context:\n"
+                for m in history[-2:]: # Just last 2 messages for quick context
+                    role = "User" if m["role"] == "user" else "Assistant"
+                    hist_str += f"{role}: {m['content'][:200]}\n"
+            
+            check_prompt = f"""
+            You are an intent classifier. Determine if the user's latest prompt requires searching an Islamic Database (Quran/Tafsir) to answer accurately.
+            {hist_str}
+            Latest Prompt: '{user_prompt}'
+            Reply strictly with YES or NO.
+            """
+            
             try:
-                genai.configure(api_key=google_api_key)  # Force refresh to absolute newest key from Mongo/Env resolution
-                checker = genai.GenerativeModel("gemini-2.5-flash") # Use fast model
+                genai.configure(api_key=google_api_key) 
+                checker = genai.GenerativeModel("gemini-2.5-flash") 
                 res = checker.generate_content(check_prompt).text.strip().upper()
                 return "YES" in res
             except Exception as e:
@@ -625,7 +639,8 @@ if prompt or (uploaded_file and not prompt):
                 
         needs_rag = True
         if not uploaded_file: # Always RAG if document is attached for safety
-            needs_rag = requires_rag_search(prompt)
+            # We exclude the last message because it's the current prompt
+            needs_rag = requires_rag_search(prompt, st.session_state.messages[:-1])
 
         # B. Vector Search (RAG)
         context_results = []
@@ -656,9 +671,21 @@ if prompt or (uploaded_file and not prompt):
             meta = doc.get('metadata', {})
             source = meta.get('source', 'Unknown')
             tafsir = meta.get('tafsirName', 'Unknown')
+            surah = meta.get('surah_number', 'N/A')
+            page = meta.get('page_number', meta.get('page', 'N/A'))
             score = doc.get('score', 0)
+            
             context_text += f"Source ({source} - {tafsir}):\n{text}\n\n"
-            references.append({"source": source, "score": score})
+            
+            # Save rich metadata for the UI expander
+            references.append({
+                "source": source, 
+                "tafsir": tafsir,
+                "surah": surah,
+                "page": page,
+                "score": score,
+                "snippet": text[:150] + "..." if len(text) > 150 else text # Provide a small preview
+            })
 
         # D. Generate Answer (multimodal-aware & emotionally intelligent)
         system_instruction = """
@@ -726,9 +753,16 @@ if prompt or (uploaded_file and not prompt):
 
             # Show References
             if references:
-                with st.expander("📚 Sources & References"):
-                    for ref in references:
-                        st.markdown(f"- **{ref['source']}** (Confidence: {ref['score']:.2f})")
+                with st.expander("📚 Sources & References", expanded=False):
+                    for idx, ref in enumerate(references, 1):
+                        st.markdown(f"**[{idx}] {ref['source']}** (Confidence: {ref['score']:.2f})")
+                        st.markdown(f"- **Tafsir/Book:** {ref['tafsir']}")
+                        if ref['surah'] != 'N/A':
+                            st.markdown(f"- **Surah:** {ref['surah']}")
+                        if ref['page'] != 'N/A':
+                            st.markdown(f"- **Page:** {ref['page']}")
+                        st.caption(f"*\"{ref['snippet']}\"*")
+                        st.divider()
 
         except Exception as e:
             error_str = str(e)
